@@ -1,0 +1,64 @@
+﻿<Window x:Class="CKCompiler.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:gui="clr-namespace:CKCompiler.GUI"
+        Title="CKCompiler" Height="550" Width="825">
+    <Window.CommandBindings>
+        <CommandBinding Command="ApplicationCommands.Open" Executed="FileOpenExecuted" />
+        <CommandBinding Command="gui:Command.CompileCommand" Executed="CompileExecuted" />
+    </Window.CommandBindings>
+    <Window.InputBindings>
+        <KeyBinding Command="gui:Command.CompileCommand" Key="F5" />
+    </Window.InputBindings>
+
+    <DockPanel LastChildFill="True">
+        
+        <Menu Height="20" VerticalAlignment="Top" DockPanel.Dock="Top">
+            <MenuItem Header="FILE">
+                <MenuItem Command="Open" />
+            </MenuItem>
+            <MenuItem Header="COMPILE">
+                <MenuItem Command="gui:Command.CompileCommand" InputGestureText="F5" />
+            </MenuItem>
+        </Menu>
+        <WrapPanel DockPanel.Dock="Bottom">
+            <Expander x:Name="ErrorExpander" ExpandDirection="Up" Header="Ошибки">
+                <DataGrid AutoGenerateColumns="False" Name="ErrorsDataGrid">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Binding="{Binding Number, Mode=OneWay}" CanUserResize="False" Header="#" />
+                        <DataGridTextColumn Binding="{Binding Description, Mode=OneWay}" Header="Description" />
+                        <DataGridTextColumn Binding="{Binding Line, Mode=OneWay}" Header="Line" />
+                        <DataGridTextColumn Binding="{Binding ColumnStart, Mode=OneWay}" Header="Column" />
+                        <DataGridTextColumn Binding="{Binding Stage, Mode=OneWay}" Header="Stage" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Expander>
+        </WrapPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="200"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <avalonEdit:TextEditor xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                x:Name="TextEditor" FontFamily="Consolas" SyntaxHighlighting="Java" FontSize="10pt" />
+            <TabControl Grid.Column="2">
+                <TabItem Header="LEXEM">
+                    <DataGrid AutoGenerateColumns="False" Name="LexemDataGrid">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding Name, Mode=OneWay}" Header="Name" />
+                            <DataGridTextColumn Binding="{Binding Value, Mode=OneWay}" Header="Value" />
+                            <DataGridTextColumn Binding="{Binding Line, Mode=OneWay}" Header="Line" />
+                            <DataGridTextColumn Binding="{Binding Column, Mode=OneWay}" Header="Column" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+                <TabItem Header="AST">
+                    <TreeView x:Name="AstTreeView"/>
+                </TabItem>
+            </TabControl>
+            <GridSplitter Grid.Column="1" VerticalAlignment="Stretch" HorizontalAlignment="Center" Width="4" />
+        </Grid>
+    </DockPanel>
+</Window>
