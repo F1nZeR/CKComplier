@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Antlr.Runtime;
 
 namespace CKCompiler.Analyzers
 {
@@ -13,7 +14,7 @@ namespace CKCompiler.Analyzers
 
         public void DebugRecognitionException(Exception ex)
         {
-            _exceptions.Add(ex);
+            if (!_exceptions.Contains(ex)) _exceptions.Add(ex);
         }
     }
 
@@ -24,7 +25,25 @@ namespace CKCompiler.Analyzers
 
         public void DebugRecognitionException(Exception ex)
         {
-            _exceptions.Add(ex);
+            if (!_exceptions.Contains(ex)) _exceptions.Add(ex);
         }
+
+        protected override object RecoverFromMismatchedToken(IIntStream input, int ttype, BitSet follow)
+        {
+            var mte = new MismatchedTokenException(ttype, input);
+            throw mte;
+        }
+
+        public override void Recover(IIntStream input, RecognitionException re)
+        {
+            throw new Exception();
+        }
+
+        public override void ReportError(RecognitionException e)
+        {
+            throw new Exception();
+        }
+
+        public RecognizerSharedState State;
     }
 }

@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Antlr.Runtime.Tree;
 using CKCompiler.Core;
 using CKCompiler.Tokens;
 using Microsoft.Win32;
@@ -51,8 +52,6 @@ namespace CKCompiler
         private void PreCompileReset()
         {
             ErrorExpander.IsExpanded = false;
-
-            AstTreeView.Items.Clear();
         }
 
         private void CompileExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -72,6 +71,27 @@ namespace CKCompiler
 
             // update view
             LexemDataGrid.ItemsSource = compiler.Tokens;
+            if (compiler.Tree != null) FillLexerAndParserTables(compiler.Tree.Tree);
+        }
+
+        private void FillLexerAndParserTables(ITree tree)
+        {
+            TrvSyntaxTree.Items.Clear();
+            FillLexerAndParserTables(tree, null);
+        }
+
+        private void FillLexerAndParserTables(ITree tree, TreeViewItem parentTreeViewItem)
+        {
+            if (tree != null)
+                for (int i = 0; i < tree.ChildCount; i++)
+                {
+                    var item = new TreeViewItem {Header = tree.GetChild(i).Text, Tag = tree.GetChild(i)};
+                    if (parentTreeViewItem == null)
+                        TrvSyntaxTree.Items.Add(item);
+                    else
+                        parentTreeViewItem.Items.Add(item);
+                    FillLexerAndParserTables(tree.GetChild(i), item);
+                }
         }
     }
 }

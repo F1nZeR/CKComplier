@@ -12,7 +12,6 @@
     </Window.InputBindings>
 
     <DockPanel LastChildFill="True">
-        
         <Menu Height="20" VerticalAlignment="Top" DockPanel.Dock="Top">
             <MenuItem Header="FILE">
                 <MenuItem Command="Open" />
@@ -21,19 +20,6 @@
                 <MenuItem Command="gui:Command.CompileCommand" InputGestureText="F5" />
             </MenuItem>
         </Menu>
-        <WrapPanel DockPanel.Dock="Bottom">
-            <Expander x:Name="ErrorExpander" ExpandDirection="Up" Header="Ошибки">
-                <DataGrid AutoGenerateColumns="False" Name="ErrorsDataGrid">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Binding="{Binding Number, Mode=OneWay}" CanUserResize="False" Header="#" />
-                        <DataGridTextColumn Binding="{Binding Description, Mode=OneWay}" Header="Description" />
-                        <DataGridTextColumn Binding="{Binding Line, Mode=OneWay}" Header="Line" />
-                        <DataGridTextColumn Binding="{Binding ColumnStart, Mode=OneWay}" Header="Column" />
-                        <DataGridTextColumn Binding="{Binding Stage, Mode=OneWay}" Header="Stage" />
-                    </DataGrid.Columns>
-                </DataGrid>
-            </Expander>
-        </WrapPanel>
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition></ColumnDefinition>
@@ -41,8 +27,21 @@
                 <ColumnDefinition Width="200"></ColumnDefinition>
             </Grid.ColumnDefinitions>
 
-            <avalonEdit:TextEditor xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                x:Name="TextEditor" FontFamily="Consolas" SyntaxHighlighting="Java" FontSize="10pt" />
+            <DockPanel LastChildFill="True">
+                <Expander x:Name="ErrorExpander" ExpandDirection="Up" Header="Ошибки" DockPanel.Dock="Bottom" Background="#FFF0F0F0">
+                    <DataGrid AutoGenerateColumns="False" Name="ErrorsDataGrid">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding Number, Mode=OneWay}" CanUserResize="False" Header="#" />
+                            <DataGridTextColumn Binding="{Binding Description, Mode=OneWay}" Header="Description" />
+                            <DataGridTextColumn Binding="{Binding Line, Mode=OneWay}" Header="Line" />
+                            <DataGridTextColumn Binding="{Binding ColumnStart, Mode=OneWay}" Header="Column" />
+                            <DataGridTextColumn Binding="{Binding Stage, Mode=OneWay}" Header="Stage" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Expander>
+                <avalonEdit:TextEditor xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                    x:Name="TextEditor" FontFamily="Consolas" SyntaxHighlighting="Java" FontSize="10pt" ShowLineNumbers="True" />
+            </DockPanel>
             <TabControl Grid.Column="2">
                 <TabItem Header="LEXEM">
                     <DataGrid AutoGenerateColumns="False" Name="LexemDataGrid">
@@ -55,7 +54,7 @@
                     </DataGrid>
                 </TabItem>
                 <TabItem Header="AST">
-                    <TreeView x:Name="AstTreeView"/>
+                    <TreeView x:Name="TrvSyntaxTree"/>
                 </TabItem>
             </TabControl>
             <GridSplitter Grid.Column="1" VerticalAlignment="Stretch" HorizontalAlignment="Center" Width="4" />
