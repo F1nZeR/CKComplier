@@ -13,8 +13,6 @@ D:\PROJECTS\CKCompiler\CKCompiler\obj\Debug\CKCompiler.Properties.Resources.reso
 D:\PROJECTS\CKCompiler\CKCompiler\obj\Debug\CKCompiler.csproj.GenerateResource.Cache
 D:\PROJECTS\CKCompiler\CKCompiler\obj\Debug\CKCompiler.exe
 D:\PROJECTS\CKCompiler\CKCompiler\obj\Debug\CKCompiler.pdb
-D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\Antlr3.Runtime.dll
-D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\AntlrBuildTask.dll
-D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\Antlr3.Runtime.pdb
 D:\PROJECTS\CKCompiler\CKCompiler\obj\Debug\CKCompiler_MarkupCompile.lref
-D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\CK.tokens
+D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\Antlr4.Runtime.v4.5.dll
+D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\CKLexer.tokens

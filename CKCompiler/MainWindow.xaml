@@ -31,11 +31,9 @@
                 <Expander x:Name="ErrorExpander" ExpandDirection="Up" Header="Ошибки" DockPanel.Dock="Bottom" Background="#FFF0F0F0">
                     <DataGrid AutoGenerateColumns="False" Name="ErrorsDataGrid">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding Number, Mode=OneWay}" CanUserResize="False" Header="#" />
-                            <DataGridTextColumn Binding="{Binding Description, Mode=OneWay}" Header="Description" />
+                            <DataGridTextColumn Binding="{Binding Message, Mode=OneWay}" Header="Message" />
                             <DataGridTextColumn Binding="{Binding Line, Mode=OneWay}" Header="Line" />
-                            <DataGridTextColumn Binding="{Binding ColumnStart, Mode=OneWay}" Header="Column" />
-                            <DataGridTextColumn Binding="{Binding Stage, Mode=OneWay}" Header="Stage" />
+                            <DataGridTextColumn Binding="{Binding Column, Mode=OneWay}" Header="Column" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Expander>

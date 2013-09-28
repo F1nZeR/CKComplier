@@ -14,7 +14,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Antlr.Runtime.Tree;
+using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
 using CKCompiler.Core;
 using CKCompiler.Tokens;
 using Microsoft.Win32;
@@ -35,7 +36,7 @@ namespace CKCompiler
 
         private void OnLoaded(object sender, RoutedEventArgs routedEventArgs)
         {
-            LangTokens.Load("CK.tokens");
+            LangTokens.Load("CKLexer.tokens");
         }
 
         private void FileOpenExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -71,21 +72,25 @@ namespace CKCompiler
 
             // update view
             LexemDataGrid.ItemsSource = compiler.Tokens;
-            if (compiler.Tree != null) FillLexerAndParserTables(compiler.Tree.Tree);
+            if (compiler.ProgramContext != null) FillLexerAndParserTables(compiler.ProgramContext);
         }
 
-        private void FillLexerAndParserTables(ITree tree)
+        private void FillLexerAndParserTables(IParseTree tree)
         {
             TrvSyntaxTree.Items.Clear();
             FillLexerAndParserTables(tree, null);
         }
 
-        private void FillLexerAndParserTables(ITree tree, TreeViewItem parentTreeViewItem)
+        private void FillLexerAndParserTables(IParseTree tree, TreeViewItem parentTreeViewItem)
         {
             if (tree != null)
                 for (int i = 0; i < tree.ChildCount; i++)
                 {
-                    var item = new TreeViewItem {Header = tree.GetChild(i).Text, Tag = tree.GetChild(i)};
+                    var curItem = tree.GetChild(i);
+                    var curToken = curItem.Payload as IToken;
+                    var headerText = curToken != null ? curToken.Text : curItem.Payload.GetType().Name;
+
+                    var item = new TreeViewItem { Header = headerText, Tag = curItem };
                     if (parentTreeViewItem == null)
                         TrvSyntaxTree.Items.Add(item);
                     else
