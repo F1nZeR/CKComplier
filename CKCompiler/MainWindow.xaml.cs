@@ -17,7 +17,9 @@ using System.Windows.Shapes;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using CKCompiler.Core;
+using CKCompiler.GUI;
 using CKCompiler.Tokens;
+using MahApps.Metro.Controls;
 using Microsoft.Win32;
 
 namespace CKCompiler
@@ -25,9 +27,9 @@ namespace CKCompiler
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : MetroWindow
     {
-
+        private Compiler _compiler = new Compiler();
         public MainWindow()
         {
             InitializeComponent();
@@ -37,6 +39,7 @@ namespace CKCompiler
         private void OnLoaded(object sender, RoutedEventArgs routedEventArgs)
         {
             LangTokens.Load("CKLexer.tokens");
+            TextEditor.TextChanged += (o, args) => Compile();
         }
 
         private void FileOpenExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -52,27 +55,34 @@ namespace CKCompiler
 
         private void PreCompileReset()
         {
+            ClearErrors();
             ErrorExpander.IsExpanded = false;
         }
 
         private void CompileExecuted(object sender, ExecutedRoutedEventArgs e)
         {
+            _compiler = new Compiler();
+            Compile();
+        }
+
+        private void Compile()
+        {
             PreCompileReset();
 
-            // compile
-            var compiler = new Compiler();
-            compiler.Compile(null, TextEditor.Text);
-
-
-            ErrorsDataGrid.ItemsSource = compiler.Errors;
-            if (compiler.HasErrors)
+            _compiler.Compile(null, TextEditor.Text);
+            
+            ErrorsDataGrid.ItemsSource = _compiler.Errors;
+            if (_compiler.HasErrors)
             {
                 ErrorExpander.IsExpanded = true;
+                foreach (var error in _compiler.Errors)
+                {
+                    TextEditor.TextArea.TextView.LineTransformers.Add(
+                        new LineColorizer(error.Line, error.OffendingToken.StartIndex, error.OffendingToken.StopIndex + 1));
+                }
             }
-
-            // update view
-            LexemDataGrid.ItemsSource = compiler.Tokens;
-            if (compiler.ProgramContext != null) FillLexerAndParserTables(compiler.ProgramContext);
+            LexemDataGrid.ItemsSource = _compiler.Tokens;
+            if (_compiler.ProgramContext != null) FillLexerAndParserTables(_compiler.ProgramContext);
         }
 
         private void FillLexerAndParserTables(IParseTree tree)
@@ -97,6 +107,15 @@ namespace CKCompiler
                         parentTreeViewItem.Items.Add(item);
                     FillLexerAndParserTables(tree.GetChild(i), item);
                 }
+        }
+
+        private void ClearErrors()
+        {
+            var colorizers = TextEditor.TextArea.TextView.LineTransformers.OfType<LineColorizer>().ToList();
+            foreach (var lineColorizer in colorizers)
+            {
+                TextEditor.TextArea.TextView.LineTransformers.Remove(lineColorizer);
+            }
         }
     }
 }

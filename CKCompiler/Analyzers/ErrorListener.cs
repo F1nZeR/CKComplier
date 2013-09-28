@@ -24,7 +24,7 @@ namespace CKCompiler.Analyzers
                        {
                            Column = charPositionInLine,
                            Line = line,
-                           Message = msg,
+                           Message = msg.Trim(),
                            OffendingToken = offendingSymbol,
                            RecognitionException = e,
                            Recognizer = recognizer

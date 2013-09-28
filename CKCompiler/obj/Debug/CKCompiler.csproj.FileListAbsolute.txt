@@ -16,3 +16,5 @@ D:\PROJECTS\CKCompiler\CKCompiler\obj\Debug\CKCompiler.pdb
 D:\PROJECTS\CKCompiler\CKCompiler\obj\Debug\CKCompiler_MarkupCompile.lref
 D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\Antlr4.Runtime.v4.5.dll
 D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\CKLexer.tokens
+D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\MahApps.Metro.dll
+D:\PROJECTS\CKCompiler\CKCompiler\bin\Debug\System.Windows.Interactivity.dll

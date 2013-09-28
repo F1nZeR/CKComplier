@@ -1,8 +1,11 @@
-﻿<Window x:Class="CKCompiler.MainWindow"
+﻿<controls:MetroWindow x:Class="CKCompiler.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:gui="clr-namespace:CKCompiler.GUI"
-        Title="CKCompiler" Height="550" Width="825">
+        xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+        Title="CKCompiler" Height="550" Width="825"
+        ShowIconOnTitleBar="true">
+    
     <Window.CommandBindings>
         <CommandBinding Command="ApplicationCommands.Open" Executed="FileOpenExecuted" />
         <CommandBinding Command="gui:Command.CompileCommand" Executed="CompileExecuted" />
@@ -10,11 +13,26 @@
     <Window.InputBindings>
         <KeyBinding Command="gui:Command.CompileCommand" Key="F5" />
     </Window.InputBindings>
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Colours.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/red.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseLight.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.AnimatedTabControl.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
 
     <DockPanel LastChildFill="True">
         <Menu Height="20" VerticalAlignment="Top" DockPanel.Dock="Top">
             <MenuItem Header="FILE">
                 <MenuItem Command="Open" />
+                <MenuItem Command="Save" />
+                <Separator />
+                <MenuItem Command="Close" />
             </MenuItem>
             <MenuItem Header="COMPILE">
                 <MenuItem Command="gui:Command.CompileCommand" InputGestureText="F5" />
@@ -24,7 +42,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition></ColumnDefinition>
                 <ColumnDefinition Width="Auto"></ColumnDefinition>
-                <ColumnDefinition Width="200"></ColumnDefinition>
+                <ColumnDefinition Width="220"></ColumnDefinition>
             </Grid.ColumnDefinitions>
 
             <DockPanel LastChildFill="True">
@@ -37,25 +55,29 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </Expander>
+
                 <avalonEdit:TextEditor xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                     x:Name="TextEditor" FontFamily="Consolas" SyntaxHighlighting="Java" FontSize="10pt" ShowLineNumbers="True" />
             </DockPanel>
-            <TabControl Grid.Column="2">
-                <TabItem Header="LEXEM">
-                    <DataGrid AutoGenerateColumns="False" Name="LexemDataGrid">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding Name, Mode=OneWay}" Header="Name" />
-                            <DataGridTextColumn Binding="{Binding Value, Mode=OneWay}" Header="Value" />
-                            <DataGridTextColumn Binding="{Binding Line, Mode=OneWay}" Header="Line" />
-                            <DataGridTextColumn Binding="{Binding Column, Mode=OneWay}" Header="Column" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </TabItem>
-                <TabItem Header="AST">
-                    <TreeView x:Name="TrvSyntaxTree"/>
-                </TabItem>
-            </TabControl>
+            <controls:MetroContentControl Grid.Column="2">
+                <TabControl>
+                    <TabItem Header="TOKENS">
+                        <DataGrid AutoGenerateColumns="False" Name="LexemDataGrid">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Binding="{Binding Name, Mode=OneWay}" Header="Name" />
+                                <DataGridTextColumn Binding="{Binding Value, Mode=OneWay}" Header="Value" />
+                                <DataGridTextColumn Binding="{Binding Line, Mode=OneWay}" Header="Line" />
+                                <DataGridTextColumn Binding="{Binding Column, Mode=OneWay}" Header="Column" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </TabItem>
+                    <TabItem Header="TREE">
+                        <TreeView x:Name="TrvSyntaxTree"/>
+                    </TabItem>
+                </TabControl>
+            </controls:MetroContentControl>
+            
             <GridSplitter Grid.Column="1" VerticalAlignment="Stretch" HorizontalAlignment="Center" Width="4" />
         </Grid>
     </DockPanel>
-</Window>
+</controls:MetroWindow>
