@@ -70,8 +70,16 @@
     <Compile Include="Analyzers\CKParser.cs" />
     <Compile Include="Analyzers\CKVisitor.cs" />
     <Compile Include="Analyzers\ErrorListener.cs" />
+    <Compile Include="Core\CodeGen.cs" />
     <Compile Include="Core\CompilerError.cs" />
-    <Compile Include="GUI\Command .cs" />
+    <Compile Include="Core\ObjectDefs\ArgObjectDef.cs" />
+    <Compile Include="Core\ObjectDefs\enmObjectScope.cs" />
+    <Compile Include="Core\ObjectDefs\FieldObjectDef.cs" />
+    <Compile Include="Core\ObjectDefs\LocalObjectDef.cs" />
+    <Compile Include="Core\ObjectDefs\MethodDef.cs" />
+    <Compile Include="Core\ObjectDefs\ObjectDef.cs" />
+    <Compile Include="Core\ObjectDefs\ValueObjectDef.cs" />
+    <Compile Include="GUI\MyCommands.cs" />
     <Compile Include="GUI\LineColorizer.cs" />
     <Compile Include="Tokens\LangTokens.cs" />
     <Compile Include="Tokens\Token.cs" />

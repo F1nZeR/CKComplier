@@ -1,19 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using CKCompiler.Core;
@@ -30,6 +19,7 @@ namespace CKCompiler
     public partial class MainWindow : MetroWindow
     {
         private Compiler _compiler = new Compiler();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -59,18 +49,12 @@ namespace CKCompiler
             ErrorExpander.IsExpanded = false;
         }
 
-        private void CompileExecuted(object sender, ExecutedRoutedEventArgs e)
-        {
-            _compiler = new Compiler();
-            Compile();
-        }
-
         private void Compile()
         {
             PreCompileReset();
 
             _compiler.Compile(null, TextEditor.Text);
-            
+
             ErrorsDataGrid.ItemsSource = _compiler.Errors;
             if (_compiler.HasErrors)
             {
@@ -83,6 +67,7 @@ namespace CKCompiler
             }
             LexemDataGrid.ItemsSource = _compiler.Tokens;
             if (_compiler.ProgramContext != null) FillLexerAndParserTables(_compiler.ProgramContext);
+            
         }
 
         private void FillLexerAndParserTables(IParseTree tree)
@@ -116,6 +101,22 @@ namespace CKCompiler
             {
                 TextEditor.TextArea.TextView.LineTransformers.Remove(lineColorizer);
             }
+        }
+
+        private void CompileExecuted(object sender, ExecutedRoutedEventArgs e)
+        {
+            _compiler = new Compiler();
+            Compile();
+        }
+
+        private void GenerateExecuted(object sender, ExecutedRoutedEventArgs e)
+        {
+            _compiler.GenerateCode();
+        }
+
+        private void GenerateCanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = !_compiler.HasErrors && _compiler.ProgramContext != null;
         }
     }
 }

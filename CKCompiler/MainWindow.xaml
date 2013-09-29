@@ -6,13 +6,6 @@
         Title="CKCompiler" Height="550" Width="825"
         ShowIconOnTitleBar="true">
     
-    <Window.CommandBindings>
-        <CommandBinding Command="ApplicationCommands.Open" Executed="FileOpenExecuted" />
-        <CommandBinding Command="gui:Command.CompileCommand" Executed="CompileExecuted" />
-    </Window.CommandBindings>
-    <Window.InputBindings>
-        <KeyBinding Command="gui:Command.CompileCommand" Key="F5" />
-    </Window.InputBindings>
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -26,16 +19,25 @@
         </ResourceDictionary>
     </Window.Resources>
 
+    <Window.CommandBindings>
+        <CommandBinding Command="Open" Executed="FileOpenExecuted" />
+        <CommandBinding Command="gui:MyCommands.Compile" Executed="CompileExecuted" />
+        <CommandBinding Command="gui:MyCommands.Generate" Executed="GenerateExecuted" CanExecute="GenerateCanExecute"/>
+    </Window.CommandBindings>
+    <Window.InputBindings>
+        <KeyBinding Command="gui:MyCommands.Compile" Key="F5" />
+        <KeyBinding Command="gui:MyCommands.Generate" Key="F5" Modifiers="Control" />
+    </Window.InputBindings>
+
     <DockPanel LastChildFill="True">
         <Menu Height="20" VerticalAlignment="Top" DockPanel.Dock="Top">
             <MenuItem Header="FILE">
                 <MenuItem Command="Open" />
                 <MenuItem Command="Save" />
-                <Separator />
-                <MenuItem Command="Close" />
             </MenuItem>
-            <MenuItem Header="COMPILE">
-                <MenuItem Command="gui:Command.CompileCommand" InputGestureText="F5" />
+            <MenuItem Header="COMPILER">
+                <MenuItem Command="gui:MyCommands.Compile" InputGestureText="F5" />
+                <MenuItem Command="gui:MyCommands.Generate" InputGestureText="Ctrl+F5" />
             </MenuItem>
         </Menu>
         <Grid>
@@ -47,7 +49,7 @@
 
             <DockPanel LastChildFill="True">
                 <Expander x:Name="ErrorExpander" ExpandDirection="Up" Header="Ошибки" DockPanel.Dock="Bottom" Background="#FFF0F0F0">
-                    <DataGrid AutoGenerateColumns="False" Name="ErrorsDataGrid">
+                    <DataGrid AutoGenerateColumns="False" CanUserAddRows="False" Name="ErrorsDataGrid">
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding Message, Mode=OneWay}" Header="Message" />
                             <DataGridTextColumn Binding="{Binding Line, Mode=OneWay}" Header="Line" />

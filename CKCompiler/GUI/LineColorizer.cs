@@ -38,6 +38,7 @@ namespace CKCompiler.GUI
         {
             if (!line.IsDeleted && line.LineNumber == _lineNumber)
             {
+                if (line.Offset > _fromPos || line.EndOffset < _toPos) return;
                 ChangeLinePart(_fromPos, _toPos, ApplyChanges);
             }
         }

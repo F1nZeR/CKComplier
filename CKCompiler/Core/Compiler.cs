@@ -49,5 +49,13 @@ namespace CKCompiler.Core
                            });
             }
         }
+
+        public void GenerateCode()
+        {
+            if (ProgramContext == null || HasErrors) return;
+
+            var codegen = new CodeGen(ProgramContext, "lalka");
+            codegen.Generate();
+        }
     }
 }
