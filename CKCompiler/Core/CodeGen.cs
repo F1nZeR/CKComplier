@@ -6,8 +6,10 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
+using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using CKCompiler.Core.ObjectDefs;
+using CKCompiler.Tokens;
 
 namespace CKCompiler.Core
 {
@@ -161,7 +163,7 @@ namespace CKCompiler.Core
         private void DefineFunction(IParseTree treeNode, TypeBuilder classBuilder, IDictionary<string, MethodDef> functionList)
         {
             var functionName = treeNode.GetChild(0).GetText();
-            var functionReturnType = GetType(treeNode.GetChild(1).GetText());
+            var functionReturnType = GetType(treeNode.GetChild(treeNode.ChildCount - 2).GetText());
 
             Type[] inputTypes;
             var args = new Dictionary<string, ArgObjectDef>();
@@ -352,7 +354,7 @@ namespace CKCompiler.Core
             _currentIlGenerator = _functions[_currentTypeBuilder.Name][functionName].MethodBuilder.GetILGenerator();
             LocalObjectDef.InitGenerator(_currentIlGenerator);
 
-            //var returnObjectDef = EmitExpression(functionNode.GetChild(2));
+            var returnObjectDef = EmitExpression(functionNode.GetChild(functionNode.ChildCount-1).GetChild(0));
             //returnObjectDef.Load();
 
             //if (!functionReturnType.IsAssignableFrom(returnObjectDef.Type))
@@ -370,6 +372,330 @@ namespace CKCompiler.Core
             //returnObjectDef.Remove();
         }
 
+        #region EmitExpr
+        private ObjectDef _returnResult = null;
+        private ObjectDef EmitExpression(IParseTree expressionNode)
+        {
+            if (_returnResult != null) return null; // всё тлен, если уже что-то вернули через Return
+
+            var nodeType = expressionNode.GetType();
+            if (nodeType == typeof(CKParser.BlockContext))
+            {
+                var usedObjs = new List<ObjectDef>();
+                for (int i = 1; i < expressionNode.ChildCount - 1; i++)
+                {
+                    var blockStatementNode = expressionNode.GetChild(i);
+                    for (int j = 0; j < blockStatementNode.ChildCount; j++)
+                    {
+                        var objectDef = EmitExpression(blockStatementNode.GetChild(j));
+                        if (objectDef != null) usedObjs.Add(objectDef);
+                    }
+                }
+
+                foreach (var objectDef in usedObjs)
+                {
+                    objectDef.Remove();
+                }
+                return null;
+            }
+
+            if (nodeType == typeof(CKParser.VarDefContext))
+            {
+                return EmitVarOperation(expressionNode);
+            }
+
+            if (nodeType == typeof(CKParser.ExprContext))
+            {
+                return EmitExprOperation(expressionNode);
+            }
+
+            if (nodeType == typeof (CKParser.ActionContext))
+            {
+                EmitActionOperation(expressionNode);
+            }
+
+            return null;
+        }
+
+        private void EmitActionOperation(IParseTree actionNode)
+        {
+            switch (actionNode.ChildCount)
+            {
+                case 2:
+                    var twChild = actionNode.GetChild(0);
+                    if (twChild.GetType() == typeof(CKParser.StatementExprContext))
+                    {
+                        var objectDef = EmitExpression(twChild.GetChild(0));
+                        if (objectDef != null) objectDef.Remove();
+                    }
+                    return;
+
+                default:
+                    throw new Exception();
+            }
+        }
+
+        private ObjectDef EmitInvoke(IParseTree functionNode, IParseTree argsExprNode)
+        {
+            var functionName = functionNode.GetChild(2).GetText();
+            MethodBuilder methodBuilder;
+            var invokeObjectDef = EmitExpression(functionNode.GetChild(0));
+            var invokeObjectName = invokeObjectDef.Type.Name;
+
+            ObjectDef result = null;
+            if (!_functions.ContainsKey(invokeObjectName) || !_functions[invokeObjectName].ContainsKey(functionName))
+            {
+                //CompilerErrors.Add(new UndefinedFunctionError(functionName, invokeObjectName,
+                //    CompilerErrors.Count, functionNode.Line, functionNode.CharPositionInLine));
+                throw new MissingMethodException();
+                result = LocalObjectDef.AllocateLocal(typeof(object));
+            }
+            else
+            {
+                methodBuilder = _functions[invokeObjectName][functionName].MethodBuilder;
+                var args = new List<ObjectDef>();
+                args.Add(invokeObjectDef);
+
+                // грузим аргументы
+                if (argsExprNode != null)
+                {
+                    for (int i = 0; i < argsExprNode.ChildCount; i++)
+                    {
+                        var objectDef = EmitExpression(argsExprNode.GetChild(i));
+                        args.Add(objectDef);
+                    }
+
+                    List<ArgObjectDef> args2 = new List<ArgObjectDef>();
+                    foreach (var arg in _functions[invokeObjectDef.Type.Name][functionName].Args)
+                        args2.Add(arg.Value);
+                    //if (!CheckTypes(args, args2))
+                    //{
+                    //    var args2types = new List<Type>();
+                    //    foreach (var arg in args2)
+                    //        args2types.Add(arg.Type);
+                    //    //CompilerErrors.Add(new FunctionArgumentsError(functionName, args2types,
+                    //    //    CompilerErrors.Count, functionNode.Line, functionNode.CharPositionInLine));
+                    //    throw new Exception();
+                    //}
+                }
+
+                foreach (var arg in args)
+                    arg.Load();
+
+                _currentIlGenerator.Emit(OpCodes.Call, methodBuilder);
+
+                foreach (var arg in args)
+                    arg.Remove();
+                invokeObjectDef.Remove();
+
+                // если возвращает VOID
+                //if (functionNode.Parent.Parent.Type == CoolGrammarLexer.Exprs
+                //        && functionNode.Parent.ChildIndex != functionNode.Parent.Parent.ChildCount - 1)
+                //{
+                //    _currentIlGenerator.Emit(OpCodes.Pop);
+                //    result = new ValueObjectDef(_functions[invokeObjectDef.Type.Name][functionName].MethodBuilder.ReturnType, null);
+                //}
+                //else
+                result = LocalObjectDef.AllocateLocal(_functions[invokeObjectDef.Type.Name][functionName].MethodBuilder.ReturnType);
+            }
+
+            return result;
+        }
+
+        private ObjectDef EmitExprOperation(IParseTree expressionNode)
+        {
+            switch (expressionNode.ChildCount)
+            {
+                case 1:
+                    return EmitPrimaryContext(expressionNode.GetChild(0));
+                case 2:
+                    return EmitObjectCreation(expressionNode.GetChild(1));
+                case 3:
+                    var operand = (IToken) expressionNode.GetChild(1).Payload;
+                    switch (operand.Type)
+                    {
+                        case CKParser.MULT:
+                        case CKParser.DIV:
+                        case CKParser.PLUS:
+                        case CKParser.MINUS:
+                            return EmitArithmeticOperation(expressionNode);
+
+                        case CKParser.LPAREN: // func
+                            return EmitInvoke(expressionNode.GetChild(0), null);
+
+                        default:
+                            throw new MissingMethodException();
+                    }
+                case 4: // func call
+                    return EmitInvoke(expressionNode.GetChild(0), expressionNode.GetChild(2));
+            }
+
+            throw new MissingMethodException();
+        }
+
+        private ObjectDef EmitObjectCreation(IParseTree classNewNode)
+        {
+            ObjectDef result;
+
+            var objectName = classNewNode.GetText();
+            if (!_classBuilders.ContainsKey(objectName))
+            {
+                //CompilerErrors.Add(new UndefinedClassError(objectName, CompilerErrors.Count, expressionNode.Line,
+                //    expressionNode.CharPositionInLine));
+                throw new Exception();
+                result = new ValueObjectDef(typeof(object), null);
+            }
+            else
+            {
+                var returnType = _classBuilders[objectName];
+
+                //_currentIlGenerator.Emit(OpCodes.Newobj, _constructors[objectName]);
+
+                result = new ValueObjectDef(returnType, null, _constructors[objectName]);
+            }
+
+            return result;
+        }
+
+        private ObjectDef EmitArithmeticOperation(IParseTree expressionNode)
+        {
+            var returnObject1 = EmitExpression(expressionNode.GetChild(0));
+            var returnObject2 = EmitExpression(expressionNode.GetChild(2));
+
+            if (returnObject1.Type != IntegerType || returnObject1.Type != returnObject2.Type)
+                //CompilerErrors.Add(new ArithmeticOperatorError(
+                //    returnObject1.Type, returnObject2.Type,
+                //    CompilerErrors.Count, expressionNode.Line,
+                //    expressionNode.GetChild(1).CharPositionInLine,
+                //    expressionNode.GetChild(0).CharPositionInLine));
+                throw new InvalidOperationException();
+            else
+            {
+                returnObject1.Load();
+                returnObject2.Load();
+
+                var exprOperandToken = (IToken) expressionNode.GetChild(1).Payload;
+                if (exprOperandToken.Type == CKParser.PLUS)
+                    _currentIlGenerator.Emit(OpCodes.Add);
+                else if (exprOperandToken.Type == CKParser.MINUS)
+                    _currentIlGenerator.Emit(OpCodes.Sub);
+                else if (exprOperandToken.Type == CKParser.MULT)
+                    _currentIlGenerator.Emit(OpCodes.Mul);
+                else if (exprOperandToken.Type == CKParser.DIV)
+                    _currentIlGenerator.Emit(OpCodes.Div);
+
+                returnObject1.Remove();
+                returnObject2.Remove();
+            }
+
+            return LocalObjectDef.AllocateLocal(IntegerType);
+        }
+
+        private ObjectDef EmitPrimaryContext(IParseTree primaryNode)
+        {
+            if (primaryNode.ChildCount == 1)
+            {
+                var childNode = primaryNode.GetChild(0);
+                if (childNode.GetType() == typeof (CKParser.LiteralContext))
+                {
+                    return EmitLiteral(childNode.GetChild(0));
+                }
+                else // ID
+                {
+                    return EmitIdentificator(childNode);
+                }
+            }
+            throw new Exception();
+        }
+
+        private ObjectDef EmitIdentificator(IParseTree idNode)
+        {
+            var idValue = idNode.GetText();
+            LocalObjectDef localObjectDef;
+            if ((localObjectDef = LocalObjectDef.GetLocalObjectDef(idValue)) != null)
+                return localObjectDef;
+            if (_currentArgs.ContainsKey(idValue))
+                return _currentArgs[idValue];
+            if (_fields[_currentTypeBuilder.Name].ContainsKey(idValue))
+                return _fields[_currentTypeBuilder.Name][idValue];
+            
+            
+            //CompilerErrors.Add(new UndefinedIdError(idValue, CompilerErrors.Count,
+            //    expressionNode.Line, expressionNode.CharPositionInLine));
+            throw new Exception();
+            return new ValueObjectDef(typeof(object), null);
+        }
+
+        private ObjectDef EmitLiteral(IParseTree literalNode)
+        {
+            var token = (IToken) literalNode.Payload;
+            switch (token.Type)
+            {
+                case CKParser.INTEGER:
+                    return EmitInteger(token);
+                default:
+                    throw new Exception();
+            }
+        }
+
+        private ObjectDef EmitInteger(IToken intToken)
+        {
+            var result = new ValueObjectDef(IntegerType, int.Parse(intToken.Text));
+            return result;
+        }
+
+        /// <summary>
+        /// Объявление переменных внутри функции
+        /// </summary>
+        /// <param name="expressionNode"></param>
+        /// <returns></returns>
+        private ObjectDef EmitVarOperation(IParseTree expressionNode)
+        {
+            var localObjectDefs = new List<ObjectDef>();
+            
+            var varDefBody = expressionNode.GetChild(1);
+            var localOrFieldInitNode = varDefBody.GetChild(0);
+            var type = GetType(localOrFieldInitNode.GetChild(2).GetChild(0).GetText());
+
+            ObjectDef localReturnObjectDef;
+            if (varDefBody.ChildCount == 3)
+                localReturnObjectDef = EmitExpression(varDefBody.GetChild(2));
+            else
+                localReturnObjectDef = EmitDefaultValue(type);
+            localReturnObjectDef.Load();
+            //localReturnObjectDef.Remove();
+            var localObjectDef = LocalObjectDef.AllocateLocal(type, localOrFieldInitNode.GetChild(0).GetText());
+            localObjectDefs.Add(localObjectDef);
+            
+
+            //for (int i = 0; i < expressionNode.GetChild(0).ChildCount; i++)
+            //{
+            //    var localOrFieldInitNode = expressionNode.GetChild(0).GetChild(i);
+            //    var type = GetType(localOrFieldInitNode.GetChild(1).GetText());
+
+            //    ObjectDef localReturnObjectDef;
+            //    if (localOrFieldInitNode.ChildCount == 3)
+            //        localReturnObjectDef = EmitExpression(localOrFieldInitNode.GetChild(2));
+            //    else
+            //        localReturnObjectDef = EmitDefaultValue(type);
+            //    localReturnObjectDef.Load();
+            //    //localReturnObjectDef.Remove();
+            //    var localObjectDef = LocalObjectDef.AllocateLocal(type, localOrFieldInitNode.GetChild(0).GetText());
+            //    localObjectDefs.Add(localObjectDef);
+            //}
+
+            //var returnObjectDef = EmitExpression(expressionNode.GetChild(1));
+
+            // bug
+            //foreach (var localObjectDefine in localObjectDefs)
+            //    localObjectDefine.Free();
+
+            //return returnObjectDef;
+            return null;
+        }
+        
+        #endregion
+
         private void DefineDefaultClasses()
         {
             var functionList = new Dictionary<string, MethodDef>();
@@ -377,99 +703,89 @@ namespace CKCompiler.Core
             _classBuilders.Add("IO", _moduleBuilder.DefineType("IO", TypeAttributes.Public, typeof(object)));
             var classBuilder = _classBuilders["IO"];
 
-
-            var outStringBuilder = classBuilder.DefineMethod("out_string", MethodAttributes.Public, CallingConventions.Standard,
+            var outStringBuilder = classBuilder.DefineMethod("WriteString", MethodAttributes.Public, CallingConventions.Standard,
                 classBuilder, new Type[] { StringType });
             var ilGenerator = outStringBuilder.GetILGenerator();
             ilGenerator.Emit(OpCodes.Ldarg_1);
             ilGenerator.Emit(OpCodes.Call, WriteStringMethod);
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("out_string", new MethodDef("out_string",
+            functionList.Add("WriteString", new MethodDef("WriteString",
                 new Dictionary<string, ArgObjectDef>() 
 				{
 					{ "this", new ArgObjectDef(classBuilder, 0, "this") }, 
 					{ "x", new ArgObjectDef(StringType, 1, "x") }
 				}, outStringBuilder));
 
-
-            var outStringLineBuilder = classBuilder.DefineMethod("out_string_line", MethodAttributes.Public, CallingConventions.Standard,
+            var outStringLineBuilder = classBuilder.DefineMethod("WriteLineString", MethodAttributes.Public, CallingConventions.Standard,
                 classBuilder, new Type[] { StringType });
             ilGenerator = outStringLineBuilder.GetILGenerator();
             ilGenerator.Emit(OpCodes.Ldarg_1);
             ilGenerator.Emit(OpCodes.Call, WriteStringLineMethod);
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("out_string_line", new MethodDef("out_string_line",
+            functionList.Add("WriteLineString", new MethodDef("WriteLineString",
                 new Dictionary<string, ArgObjectDef>() 
 				{
 					{ "this", new ArgObjectDef(classBuilder, 0, "this") }, 
 					{ "x", new ArgObjectDef(StringType, 1, "x") }
 				}, outStringLineBuilder));
 
-
-            var outIntBuilder = classBuilder.DefineMethod("out_int", MethodAttributes.Public, CallingConventions.Standard,
+            var outIntBuilder = classBuilder.DefineMethod("WriteInt", MethodAttributes.Public, CallingConventions.Standard,
                 classBuilder, new Type[] { IntegerType });
             ilGenerator = outIntBuilder.GetILGenerator();
             ilGenerator.Emit(OpCodes.Ldarg_1);
             ilGenerator.Emit(OpCodes.Call, WriteIntMethod);
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("out_int", new MethodDef("out_int",
+            functionList.Add("WriteInt", new MethodDef("WriteInt",
                 new Dictionary<string, ArgObjectDef>() 
 				{
 					{ "this", new ArgObjectDef(classBuilder, 0, "this") }, 
 					{ "x", new ArgObjectDef(IntegerType, 1, "x") }
 				}, outIntBuilder));
 
-
-            var outIneLineBuilder = classBuilder.DefineMethod("out_int_line", MethodAttributes.Public, CallingConventions.Standard,
+            var outIneLineBuilder = classBuilder.DefineMethod("WriteLineInt", MethodAttributes.Public, CallingConventions.Standard,
                 classBuilder, new Type[] { IntegerType });
             ilGenerator = outIneLineBuilder.GetILGenerator();
             ilGenerator.Emit(OpCodes.Ldarg_1);
             ilGenerator.Emit(OpCodes.Call, WriteIntLineMethod);
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("out_int_line", new MethodDef("out_int_line",
+            functionList.Add("WriteLineInt", new MethodDef("WriteLineInt",
                 new Dictionary<string, ArgObjectDef>() 
 				{
 					{ "this", new ArgObjectDef(classBuilder, 0, "this") }, 
 					{ "x", new ArgObjectDef(IntegerType, 1, "x") }
 				}, outIneLineBuilder));
 
-
-            var inStringBuilder = classBuilder.DefineMethod("in_string", MethodAttributes.Public, CallingConventions.Standard,
+            var inStringBuilder = classBuilder.DefineMethod("ReadString", MethodAttributes.Public, CallingConventions.Standard,
                 classBuilder, Type.EmptyTypes);
             ilGenerator = inStringBuilder.GetILGenerator();
             //ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Call, ReadMethod);
             ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("in_string", new MethodDef("in_string",
+            functionList.Add("ReadString", new MethodDef("ReadString",
                 new Dictionary<string, ArgObjectDef>() 
 				{
 					{ "this", new ArgObjectDef(classBuilder, 0, "this") }
 				}, inStringBuilder));
 
-
-
-
-            var inIntBuilder = classBuilder.DefineMethod("in_int", MethodAttributes.Public, CallingConventions.Standard,
+            var inIntBuilder = classBuilder.DefineMethod("ReadInt", MethodAttributes.Public, CallingConventions.Standard,
                 classBuilder, Type.EmptyTypes);
             ilGenerator = inIntBuilder.GetILGenerator();
             //ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Call, ReadMethod);
             ilGenerator.Emit(OpCodes.Call, IntParseMethod);
             ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("in_int", new MethodDef("in_int",
+            functionList.Add("ReadInt", new MethodDef("ReadInt",
                 new Dictionary<string, ArgObjectDef>() 
 				{
 					{ "this", new ArgObjectDef(classBuilder, 0, "this") }
 				}, inIntBuilder));
 
-
             var constructorBuilder = classBuilder.DefineDefaultConstructor(MethodAttributes.Public);
             _constructors.Add("IO", constructorBuilder);
-
 
             _functions.Add("IO", functionList);
         }

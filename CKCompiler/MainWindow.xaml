@@ -48,7 +48,7 @@
             </Grid.ColumnDefinitions>
 
             <DockPanel LastChildFill="True">
-                <Expander x:Name="ErrorExpander" ExpandDirection="Up" Header="Ошибки" DockPanel.Dock="Bottom" Background="#FFF0F0F0">
+                <Expander x:Name="ErrorExpander" ExpandDirection="Up" Header="ERRORS" DockPanel.Dock="Bottom" Background="#FFF0F0F0">
                     <DataGrid AutoGenerateColumns="False" CanUserAddRows="False" Name="ErrorsDataGrid">
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding Message, Mode=OneWay}" Header="Message" />
