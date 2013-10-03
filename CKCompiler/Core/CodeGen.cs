@@ -347,6 +347,7 @@ namespace CKCompiler.Core
 
         private void EmitFunction(IParseTree functionNode)
         {
+            _returnResult = null; // обнулим return
             var functionName = functionNode.GetChild(0).GetText();
             var functionReturnType = GetType(functionNode.GetChild(functionNode.ChildCount-2).GetChild(0).GetText());
 
@@ -355,7 +356,7 @@ namespace CKCompiler.Core
             LocalObjectDef.InitGenerator(_currentIlGenerator);
 
             var returnObjectDef = EmitExpression(functionNode.GetChild(functionNode.ChildCount-1).GetChild(0));
-            //returnObjectDef.Load();
+            returnObjectDef.Load();
 
             //if (!functionReturnType.IsAssignableFrom(returnObjectDef.Type))
             //    //if (!returnObjectDef.Type.IsAssignableFrom(functionReturnType))
@@ -364,19 +365,18 @@ namespace CKCompiler.Core
             //        returnObjectDef.Type,
             //        CompilerErrors.Count, functionNode.GetChild(2).Line, functionNode.GetChild(2).CharPositionInLine));
 
-            // BUG: должен быть POP, но ему не нужен?!
-            //if (_functions[_currentTypeBuilder.Name][functionName].MethodBuilder.ReturnType == typeof(void))
-            //    _currentIlGenerator.Emit(OpCodes.Pop);
+            if (_functions[_currentTypeBuilder.Name][functionName].MethodBuilder.ReturnType == typeof(void))
+                _currentIlGenerator.Emit(OpCodes.Pop);
             _currentIlGenerator.Emit(OpCodes.Ret);
 
-            //returnObjectDef.Remove();
+            returnObjectDef.Remove();
         }
 
         #region EmitExpr
-        private ObjectDef _returnResult = null;
+        private ObjectDef _returnResult;
         private ObjectDef EmitExpression(IParseTree expressionNode)
         {
-            if (_returnResult != null) return null; // всё тлен, если уже что-то вернули через Return
+            if (_returnResult != null) return _returnResult; // нет смысла продолжать
 
             var nodeType = expressionNode.GetType();
             if (nodeType == typeof(CKParser.BlockContext))
@@ -396,7 +396,7 @@ namespace CKCompiler.Core
                 {
                     objectDef.Remove();
                 }
-                return null;
+                return _returnResult;
             }
 
             if (nodeType == typeof(CKParser.VarDefContext))
@@ -414,14 +414,14 @@ namespace CKCompiler.Core
                 EmitActionOperation(expressionNode);
             }
 
-            return null;
+            return null; // не нужно ничего возвращать тут
         }
 
         private void EmitActionOperation(IParseTree actionNode)
         {
             switch (actionNode.ChildCount)
             {
-                case 2:
+                case 2: // вызов функции
                     var twChild = actionNode.GetChild(0);
                     if (twChild.GetType() == typeof(CKParser.StatementExprContext))
                     {
@@ -430,29 +430,38 @@ namespace CKCompiler.Core
                     }
                     return;
 
+                case 3: // return EXPR
+                    var trChild = actionNode.GetChild(1);
+                    _returnResult = EmitExpression(trChild);
+                    return;
+
                 default:
                     throw new Exception();
             }
         }
 
+        /// <summary>
+        /// Вызов функции
+        /// </summary>
+        /// <param name="functionNode"></param>
+        /// <param name="argsExprNode"></param>
+        /// <returns></returns>
         private ObjectDef EmitInvoke(IParseTree functionNode, IParseTree argsExprNode)
         {
             var functionName = functionNode.GetChild(2).GetText();
-            MethodBuilder methodBuilder;
             var invokeObjectDef = EmitExpression(functionNode.GetChild(0));
             var invokeObjectName = invokeObjectDef.Type.Name;
 
-            ObjectDef result = null;
+            ObjectDef result;
             if (!_functions.ContainsKey(invokeObjectName) || !_functions[invokeObjectName].ContainsKey(functionName))
             {
                 //CompilerErrors.Add(new UndefinedFunctionError(functionName, invokeObjectName,
                 //    CompilerErrors.Count, functionNode.Line, functionNode.CharPositionInLine));
-                throw new MissingMethodException();
                 result = LocalObjectDef.AllocateLocal(typeof(object));
             }
             else
             {
-                methodBuilder = _functions[invokeObjectName][functionName].MethodBuilder;
+                var methodBuilder = _functions[invokeObjectName][functionName].MethodBuilder;
                 var args = new List<ObjectDef>();
                 args.Add(invokeObjectDef);
 
@@ -465,9 +474,7 @@ namespace CKCompiler.Core
                         args.Add(objectDef);
                     }
 
-                    List<ArgObjectDef> args2 = new List<ArgObjectDef>();
-                    foreach (var arg in _functions[invokeObjectDef.Type.Name][functionName].Args)
-                        args2.Add(arg.Value);
+                    var args2 = _functions[invokeObjectDef.Type.Name][functionName].Args.Select(arg => arg.Value).ToList();
                     //if (!CheckTypes(args, args2))
                     //{
                     //    var args2types = new List<Type>();
@@ -489,19 +496,23 @@ namespace CKCompiler.Core
                 invokeObjectDef.Remove();
 
                 // если возвращает VOID
-                //if (functionNode.Parent.Parent.Type == CoolGrammarLexer.Exprs
-                //        && functionNode.Parent.ChildIndex != functionNode.Parent.Parent.ChildCount - 1)
-                //{
-                //    _currentIlGenerator.Emit(OpCodes.Pop);
-                //    result = new ValueObjectDef(_functions[invokeObjectDef.Type.Name][functionName].MethodBuilder.ReturnType, null);
-                //}
-                //else
-                result = LocalObjectDef.AllocateLocal(_functions[invokeObjectDef.Type.Name][functionName].MethodBuilder.ReturnType);
+                if (_functions[invokeObjectDef.Type.Name][functionName].MethodBuilder.ReturnType == typeof(void))
+                {
+                    _currentIlGenerator.Emit(OpCodes.Pop);
+                    result = new ValueObjectDef(_functions[invokeObjectDef.Type.Name][functionName].MethodBuilder.ReturnType, null);
+                }
+                else
+                    result = LocalObjectDef.AllocateLocal(_functions[invokeObjectDef.Type.Name][functionName].MethodBuilder.ReturnType);
             }
 
             return result;
         }
 
+        /// <summary>
+        /// Обработка выражений
+        /// </summary>
+        /// <param name="expressionNode"></param>
+        /// <returns></returns>
         private ObjectDef EmitExprOperation(IParseTree expressionNode)
         {
             switch (expressionNode.ChildCount)
@@ -520,19 +531,39 @@ namespace CKCompiler.Core
                         case CKParser.MINUS:
                             return EmitArithmeticOperation(expressionNode);
 
-                        case CKParser.LPAREN: // func
+                        case CKParser.LPAREN: // func call
                             return EmitInvoke(expressionNode.GetChild(0), null);
+
+                        case CKParser.DOT: // property
+                            return EmitProperty(expressionNode.GetChild(0), expressionNode.GetChild(2));
 
                         default:
                             throw new MissingMethodException();
                     }
-                case 4: // func call
+                case 4: // func call with args
                     return EmitInvoke(expressionNode.GetChild(0), expressionNode.GetChild(2));
             }
 
             throw new MissingMethodException();
         }
 
+        /// <summary>
+        /// Получение свойства класса из объекта
+        /// </summary>
+        /// <param name="objNode"></param>
+        /// <param name="propNode"></param>
+        /// <returns></returns>
+        private ObjectDef EmitProperty(IParseTree objNode, IParseTree propNode)
+        {
+            var obj = EmitExpression(objNode);
+            return null;
+        }
+
+        /// <summary>
+        /// Создание объекта
+        /// </summary>
+        /// <param name="classNewNode"></param>
+        /// <returns></returns>
         private ObjectDef EmitObjectCreation(IParseTree classNewNode)
         {
             ObjectDef result;
@@ -550,13 +581,17 @@ namespace CKCompiler.Core
                 var returnType = _classBuilders[objectName];
 
                 //_currentIlGenerator.Emit(OpCodes.Newobj, _constructors[objectName]);
-
                 result = new ValueObjectDef(returnType, null, _constructors[objectName]);
             }
 
             return result;
         }
 
+        /// <summary>
+        /// Обработка выражений с операциями
+        /// </summary>
+        /// <param name="expressionNode"></param>
+        /// <returns></returns>
         private ObjectDef EmitArithmeticOperation(IParseTree expressionNode)
         {
             var returnObject1 = EmitExpression(expressionNode.GetChild(0));
@@ -608,6 +643,11 @@ namespace CKCompiler.Core
             throw new Exception();
         }
 
+        /// <summary>
+        /// Получение идентификатора
+        /// </summary>
+        /// <param name="idNode"></param>
+        /// <returns></returns>
         private ObjectDef EmitIdentificator(IParseTree idNode)
         {
             var idValue = idNode.GetText();
@@ -762,7 +802,6 @@ namespace CKCompiler.Core
             var inStringBuilder = classBuilder.DefineMethod("ReadString", MethodAttributes.Public, CallingConventions.Standard,
                 classBuilder, Type.EmptyTypes);
             ilGenerator = inStringBuilder.GetILGenerator();
-            //ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Call, ReadMethod);
             ilGenerator.Emit(OpCodes.Ret);
             functionList.Add("ReadString", new MethodDef("ReadString",
@@ -774,7 +813,6 @@ namespace CKCompiler.Core
             var inIntBuilder = classBuilder.DefineMethod("ReadInt", MethodAttributes.Public, CallingConventions.Standard,
                 classBuilder, Type.EmptyTypes);
             ilGenerator = inIntBuilder.GetILGenerator();
-            //ilGenerator.Emit(OpCodes.Nop);
             ilGenerator.Emit(OpCodes.Call, ReadMethod);
             ilGenerator.Emit(OpCodes.Call, IntParseMethod);
             ilGenerator.Emit(OpCodes.Ret);

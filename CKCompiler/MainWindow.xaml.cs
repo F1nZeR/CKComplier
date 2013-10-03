@@ -1,8 +1,10 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using CKCompiler.Core;
@@ -19,6 +21,7 @@ namespace CKCompiler
     public partial class MainWindow : MetroWindow
     {
         private Compiler _compiler = new Compiler();
+        private DispatcherTimer _compileTimer;
 
         public MainWindow()
         {
@@ -26,10 +29,22 @@ namespace CKCompiler
             Loaded += OnLoaded;
         }
 
+        private void CompileTimerCallback(object sender, EventArgs e)
+        {
+            Compile();
+            _compileTimer.IsEnabled = false;
+        }
+
         private void OnLoaded(object sender, RoutedEventArgs routedEventArgs)
         {
             LangTokens.Load("CKLexer.tokens");
-            TextEditor.TextChanged += (o, args) => Compile();
+            _compileTimer = new DispatcherTimer(new TimeSpan(0, 0, 0, 0, 500), DispatcherPriority.Normal, CompileTimerCallback, Dispatcher);
+            TextEditor.TextChanged += (o, args) =>
+                                      {
+                                          _compileTimer.Stop();
+                                          _compileTimer.IsEnabled = true;
+                                          _compileTimer.Start();
+                                      };
         }
 
         private void FileOpenExecuted(object sender, ExecutedRoutedEventArgs e)
