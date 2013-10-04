@@ -100,7 +100,8 @@ namespace CKCompiler.Core
             for (int i = 0; i < rootNode.ChildCount; i++)
             {
                 var className = rootNode.GetChild(i).GetChild(1).GetText();
-                var classBody = rootNode.GetChild(i).GetChild(2);
+                var classDef = rootNode.GetChild(i);
+                var classBody = classDef.GetChild(classDef.ChildCount - 1);
                 var fieldList = new Dictionary<string, FieldObjectDef>();
                 var functionList = new Dictionary<string, MethodDef>();
                 _currentTypeBuilder = _classBuilders[className];
@@ -154,8 +155,8 @@ namespace CKCompiler.Core
             var fieldType = GetType(defType.GetChild(2).GetChild(0).GetText());
 
             var fieldBuilder = _currentTypeBuilder.Name != "Program"
-                ? classBuilder.DefineField(fieldName, fieldType, FieldAttributes.Family)
-                : classBuilder.DefineField(fieldName, fieldType, FieldAttributes.Family | FieldAttributes.Static);
+                ? classBuilder.DefineField(fieldName, fieldType, FieldAttributes.Public)
+                : classBuilder.DefineField(fieldName, fieldType, FieldAttributes.Public | FieldAttributes.Static);
 
             fieldList.Add(fieldName, new FieldObjectDef(fieldType, fieldName, fieldBuilder));
         }
@@ -318,30 +319,29 @@ namespace CKCompiler.Core
 
         private void EmitField(IParseTree fieldNode)
         {
+            _returnResult = null; // обнулим return
             _currentIlGenerator = _constructors[_currentTypeBuilder.Name].GetILGenerator();
             LocalObjectDef.InitGenerator(_currentIlGenerator);
 
-            var field = fieldNode.GetChild(1).GetChild(0);
-            ObjectDef returnObjectDef;
-            //if (fieldNode.ChildCount == 3)
-            //    returnObjectDef = EmitExpression(fieldNode.GetChild(2));
+            var field = fieldNode.GetChild(1);
+            var returnObjectDef = field.ChildCount == 3
+                ? EmitExpression(field.GetChild(2))
+                : EmitDefaultValue(GetType(field.GetChild(0).GetChild(2).GetChild(0).GetText()));
+
+
+            //if (!_constructors[_currentTypeBuilder.Name].IsStatic)
+            //{
+            //    _currentIlGenerator.Emit(OpCodes.Ldarg_0);
+            //    returnObjectDef.Load();
+            //    _currentIlGenerator.Emit(OpCodes.Stfld,
+            //        _fields[_currentTypeBuilder.Name][field.GetChild(0).GetText()].FieldInfo);
+            //}
             //else
-                returnObjectDef = EmitDefaultValue(GetType(field.GetChild(2).GetChild(0).GetText()));
-
-
-            if (!_constructors[_currentTypeBuilder.Name].IsStatic)
-            {
-                _currentIlGenerator.Emit(OpCodes.Ldarg_0);
-                returnObjectDef.Load();
-                _currentIlGenerator.Emit(OpCodes.Stfld,
-                    _fields[_currentTypeBuilder.Name][field.GetChild(0).GetText()].FieldInfo);
-            }
-            else
-            {
+            //{
                 returnObjectDef.Load();
                 _currentIlGenerator.Emit(OpCodes.Stsfld,
-                    _fields[_currentTypeBuilder.Name][field.GetChild(0).GetText()].FieldInfo);
-            }
+                    _fields[_currentTypeBuilder.Name][field.GetChild(0).GetChild(0).GetText()].FieldInfo);
+            //}
             returnObjectDef.Remove();
         }
 
@@ -531,6 +531,16 @@ namespace CKCompiler.Core
                         case CKParser.MINUS:
                             return EmitArithmeticOperation(expressionNode);
 
+                        case CKParser.LT:
+                        case CKParser.GT:
+                            return EmitComparsionOperation(expressionNode);
+
+                        case CKParser.EQUAL:
+                            return EmitEqualOperation(expressionNode);
+
+                        case CKParser.ASSIGN:
+                            return EmitAssignOperation(expressionNode);
+
                         case CKParser.LPAREN: // func call
                             return EmitInvoke(expressionNode.GetChild(0), null);
 
@@ -547,6 +557,114 @@ namespace CKCompiler.Core
             throw new MissingMethodException();
         }
 
+        private ObjectDef EmitComparsionOperation(IParseTree compNode)
+        {
+            var returnObject2 = EmitExpression(compNode.GetChild(2));
+            var returnObject1 = EmitExpression(compNode.GetChild(0));
+
+            //if (returnObject1.Type != IntegerType || returnObject1.Type != returnObject2.Type)
+            //    CompilerErrors.Add(new ComparsionOperatorError(returnObject1.Type, returnObject2.Type,
+            //        CompilerErrors.Count, expressionNode.Line, expressionNode.GetChild(0).CharPositionInLine,
+            //        expressionNode.GetChild(1).CharPositionInLine));
+            //else
+            {
+                returnObject1.Load();
+                returnObject2.Load();
+
+                var compOperator = (IToken) compNode.GetChild(1).Payload;
+                switch (compOperator.Type)
+                {
+                    case CKParser.LT:
+                        _currentIlGenerator.Emit(OpCodes.Clt);
+                        break;
+
+                    case CKParser.LE:
+                        _currentIlGenerator.Emit(OpCodes.Cgt);
+                        _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
+                        _currentIlGenerator.Emit(OpCodes.Ceq);
+                        break;
+
+                    case CKParser.GT:
+                        _currentIlGenerator.Emit(OpCodes.Cgt);
+                        break;
+
+                    case CKParser.GE:
+                        _currentIlGenerator.Emit(OpCodes.Clt);
+                        _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
+                        _currentIlGenerator.Emit(OpCodes.Ceq);
+                        break;
+
+                    default:
+                        return null;
+                }
+
+                returnObject1.Remove();
+                returnObject2.Remove();
+            }
+
+            return LocalObjectDef.AllocateLocal(BoolType);
+        }
+
+        private ObjectDef EmitEqualOperation(IParseTree equalNode)
+        {
+            var returnObject1 = EmitExpression(equalNode.GetChild(0));
+            var returnObject2 = EmitExpression(equalNode.GetChild(2));
+
+            //if (returnObject1.Type != returnObject2.Type)
+            //    CompilerErrors.Add(new ComparsionOperatorError(returnObject1.Type, returnObject2.Type,
+            //        CompilerErrors.Count, expressionNode.Line, expressionNode.GetChild(0).CharPositionInLine,
+            //        expressionNode.GetChild(1).CharPositionInLine));
+            //else
+            {
+                returnObject1.Load();
+                returnObject2.Load();
+
+                _currentIlGenerator.Emit(OpCodes.Ceq);
+
+                returnObject1.Remove();
+                returnObject2.Remove();
+            }
+
+            return LocalObjectDef.AllocateLocal(BoolType);
+        }
+
+        private ObjectDef EmitAssignOperation(IParseTree assignNode)
+        {
+            var returnObjectDef = EmitExpression(assignNode.GetChild(2));
+            var id = EmitExpression(assignNode.GetChild(0));
+
+            returnObjectDef.Load();
+            if (id is LocalObjectDef)
+            {
+                var localObjectDef = LocalObjectDef.AllocateLocal(id.Type, assignNode.GetChild(0).GetText());
+            }
+            else if (id is FieldObjectDef)
+            {
+                var idName = (FieldObjectDef) id;
+                
+                _currentIlGenerator.Emit(OpCodes.Stsfld, idName.FieldInfo);
+            }
+
+            // Пока только для полей класса.
+            // Сделать проверку типов.
+
+            //if (CurrentArgs_.ContainsKey(CurrentTypeBuilder_.Name))
+
+            //if (!_fields[_currentTypeBuilder.Name][id].FieldInfo.IsStatic)
+            //{
+            //    _currentIlGenerator.Emit(OpCodes.Ldarg_0);
+            //    returnObjectDef.Load();
+            //    _currentIlGenerator.Emit(OpCodes.Stfld, _fields[_currentTypeBuilder.Name][id].FieldInfo);
+            //}
+            //else
+            //{
+            //    returnObjectDef.Load();
+            //    _currentIlGenerator.Emit(OpCodes.Stsfld, _fields[_currentTypeBuilder.Name][id].FieldInfo);
+            //}
+
+            return null;
+        }
+
         /// <summary>
         /// Получение свойства класса из объекта
         /// </summary>
@@ -556,7 +674,12 @@ namespace CKCompiler.Core
         private ObjectDef EmitProperty(IParseTree objNode, IParseTree propNode)
         {
             var obj = EmitExpression(objNode);
-            return null;
+            var idValue = propNode.GetText();
+            if (_fields[obj.Type.Name].ContainsKey(idValue))
+            {
+                return _fields[obj.Type.Name][idValue];
+            }
+            return new ValueObjectDef(typeof(object), null);
         }
 
         /// <summary>
@@ -673,9 +796,18 @@ namespace CKCompiler.Core
             {
                 case CKParser.INTEGER:
                     return EmitInteger(token);
+                case CKParser.TRUE:
+                case CKParser.FALSE:
+                    return EmitBoolean(token);
                 default:
                     throw new Exception();
             }
+        }
+
+        private ObjectDef EmitBoolean(IToken boolToken)
+        {
+            var result = new ValueObjectDef(BoolType, bool.Parse(boolToken.Text));
+            return result;
         }
 
         private ObjectDef EmitInteger(IToken intToken)
@@ -726,7 +858,7 @@ namespace CKCompiler.Core
 
             //var returnObjectDef = EmitExpression(expressionNode.GetChild(1));
 
-            // bug
+            // bug с видимостью переменных
             //foreach (var localObjectDefine in localObjectDefs)
             //    localObjectDefine.Free();
 

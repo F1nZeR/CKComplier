@@ -36,15 +36,15 @@ namespace CKCompiler.Core.ObjectDefs
 
         public override void Load()
         {
-            if (!FieldInfo.IsStatic)
-            {
-                Generator.Emit(OpCodes.Ldarg_0);
-                Generator.Emit(OpCodes.Ldfld, FieldInfo);
-            }
-            else
-            {
+            //if (!FieldInfo.IsStatic)
+            //{
+            //    Generator.Emit(OpCodes.Ldarg_0);
+            //    Generator.Emit(OpCodes.Ldfld, FieldInfo);
+            //}
+            //else
+            //{
                 Generator.Emit(OpCodes.Ldsfld, FieldInfo);
-            }
+            //}
         }
 
         public override void Remove()
