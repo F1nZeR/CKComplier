@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
@@ -27,6 +28,12 @@ namespace CKCompiler.Core.ObjectDefs
         public override void Load()
         {
             if (Type == typeof(int)) EmitInteger((int)_value);
+            else if (Type == typeof (float))
+            {
+                var ci = (CultureInfo)CultureInfo.CurrentCulture.Clone();
+                ci.NumberFormat.CurrencyDecimalSeparator = ".";
+                EmitFloat(double.Parse(_value.ToString(), NumberStyles.Any, ci));
+            }
             else if (Type == typeof(bool))
             {
                 var boolean = (bool)_value;

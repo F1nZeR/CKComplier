@@ -90,6 +90,18 @@ namespace CKCompiler.Core.ObjectDefs
             }
         }
 
+        protected static void EmitFloat(double value)
+        {
+            if (value > float.MinValue && value < float.MaxValue)
+            {
+                Generator.Emit(OpCodes.Ldc_R4, (float)value);
+            }
+            else
+            {
+                Generator.Emit(OpCodes.Ldc_R8, value);
+            }
+        }
+
         protected static void EmitInteger(int value)
         {
             switch (value)
