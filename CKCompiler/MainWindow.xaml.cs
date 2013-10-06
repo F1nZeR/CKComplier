@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -38,6 +39,7 @@ namespace CKCompiler
         private void OnLoaded(object sender, RoutedEventArgs routedEventArgs)
         {
             LangTokens.Load("CKLexer.tokens");
+            ErrorsDataGrid.LoadingRow += (o, e) => e.Row.Header = e.Row.GetIndex() + 1;
             _compileTimer = new DispatcherTimer(new TimeSpan(0, 0, 0, 0, 500), DispatcherPriority.Normal, CompileTimerCallback, Dispatcher);
             TextEditor.TextChanged += (o, args) =>
                                       {
@@ -67,22 +69,25 @@ namespace CKCompiler
         private void Compile()
         {
             PreCompileReset();
+            _compiler.Compile(TextEditor.Text);
+            _compiler.GenerateCode(false);
 
-            _compiler.Compile(null, TextEditor.Text);
-
-            ErrorsDataGrid.ItemsSource = _compiler.Errors;
-            if (_compiler.HasErrors)
-            {
-                ErrorExpander.IsExpanded = true;
-                foreach (var error in _compiler.Errors)
-                {
-                    TextEditor.TextArea.TextView.LineTransformers.Add(
-                        new LineColorizer(error.Line, error.OffendingToken.StartIndex, error.OffendingToken.StopIndex + 1));
-                }
-            }
+            DisplayErrors();
             LexemDataGrid.ItemsSource = _compiler.Tokens;
             if (_compiler.ProgramContext != null) FillLexerAndParserTables(_compiler.ProgramContext);
             
+        }
+
+        private void DisplayErrors()
+        {
+            ErrorsDataGrid.ItemsSource = _compiler.Errors;
+            foreach (var error in _compiler.Errors.Where(x => x.OffendingToken != null))
+            {
+                TextEditor.TextArea.TextView.LineTransformers.Add(
+                    new LineColorizer(error.OffendingToken.Line, error.OffendingToken.StartIndex, error.OffendingToken.StopIndex + 1));
+            }
+
+            if (_compiler.HasErrors) ErrorExpander.IsExpanded = true;
         }
 
         private void FillLexerAndParserTables(IParseTree tree)
@@ -126,7 +131,8 @@ namespace CKCompiler
 
         private void GenerateExecuted(object sender, ExecutedRoutedEventArgs e)
         {
-            _compiler.GenerateCode();
+            _compiler.GenerateCode(true);
+            DisplayErrors();
         }
 
         private void GenerateCanExecute(object sender, CanExecuteRoutedEventArgs e)

@@ -5,6 +5,7 @@ using System.Windows;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using CKCompiler.Analyzers;
+using CKCompiler.Core.Errors;
 using CKCompiler.Tokens;
 using CKCompiler.Utils;
 
@@ -17,7 +18,7 @@ namespace CKCompiler.Core
         public List<CompilerError> Errors { get; private set; }
         public bool HasErrors { get { return Errors.Any(); }}
 
-        public void Compile(string filename, string source)
+        public void Compile(string source)
         {
             var inputStream = new AntlrInputStream(source);
             var ckLexer = new CKLexer(inputStream);
@@ -50,12 +51,13 @@ namespace CKCompiler.Core
             }
         }
 
-        public void GenerateCode()
+        public void GenerateCode(bool createFile)
         {
             if (ProgramContext == null || HasErrors) return;
 
-            var codegen = new CodeGen(ProgramContext, "lalka");
-            codegen.Generate();
+            var codegen = new CodeGen(ProgramContext, "exec");
+            codegen.Generate(createFile);
+            Errors.AddRange(codegen.Errors);
         }
     }
 }

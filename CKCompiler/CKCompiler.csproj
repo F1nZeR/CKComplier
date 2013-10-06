@@ -71,7 +71,13 @@
     <Compile Include="Analyzers\CKVisitor.cs" />
     <Compile Include="Analyzers\ErrorListener.cs" />
     <Compile Include="Core\CodeGen.cs" />
-    <Compile Include="Core\CompilerError.cs" />
+    <Compile Include="Core\Errors\CompilerError.cs" />
+    <Compile Include="Core\Errors\UndefinedIdError.cs" />
+    <Compile Include="Core\Errors\UndefinedClassError.cs" />
+    <Compile Include="Core\Errors\OperationTypeError.cs" />
+    <Compile Include="Core\Errors\FunctionArgumentsError.cs" />
+    <Compile Include="Core\Errors\UndefinedFunctionError.cs" />
+    <Compile Include="Core\Errors\ExpectedInputTypeError.cs" />
     <Compile Include="Core\ObjectDefs\ArgObjectDef.cs" />
     <Compile Include="Core\ObjectDefs\enmObjectScope.cs" />
     <Compile Include="Core\ObjectDefs\FieldObjectDef.cs" />

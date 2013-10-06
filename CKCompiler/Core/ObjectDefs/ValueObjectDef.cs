@@ -41,6 +41,8 @@ namespace CKCompiler.Core.ObjectDefs
             }
             else if (Type == typeof(string))
                 Generator.Emit(OpCodes.Ldstr, (string)_value);
+            else if (Type == typeof (char))
+                EmitInteger(Convert.ToInt16(_value));
             else if (_builder == null)
                 Generator.Emit(OpCodes.Ldnull);
             else

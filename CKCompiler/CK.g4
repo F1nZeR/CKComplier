@@ -7,16 +7,6 @@ options {
 @lexer::namespace {CKCompiler.Analyzers} 
 @parser::namespace {CKCompiler.Analyzers} 
 
-@lexer::header {#pragma warning disable 3021
-
-using System;
-using System.Text;
-}
-
-@parser::header {#pragma warning disable 3021
-
-using System.Text;}
-
 program :   classDef+;
 	
 classDef :  CLASS ID (COLON ID)? classBody;
@@ -39,7 +29,7 @@ funcBody : block;
 
 action : block
        | WHILE expr action
-       | IF expr action ELSE action
+       | IF expr action (ELSE action)?
        | RETURN expr? SEMI
        | statementExpr SEMI
        ;
@@ -58,7 +48,8 @@ expr : primary
      | NEW ID
      | expr (MULT | DIV) expr
      | expr (PLUS | MINUS) expr
-     | expr (LT | GT) expr
+     | expr (LT | GT | LE | GE) expr
+	 | expr (EQUAL | NOTEQUAL) expr
      | expr (ASSIGN <assoc=right>) expr
      ;
 
@@ -83,7 +74,7 @@ type
     | BoolTypeName
     | StringTypeName
     | CharTypeName
-    | ObjectTypeName
+	| VoidTypeName
     | ID
     ;
 
@@ -97,12 +88,10 @@ type
 	WHILE : 'while';
 	NEW : 'new';
 	TRUE : 'true';
-	VOID : 'void';
 	
 
 // operators
 	DOT : '.';
-	NEG : '~';
 	MULT : '*';
 	DIV : '/';
 	PLUS : '+';
@@ -112,6 +101,7 @@ type
 	GE : '>=';
 	GT : '>';
 	EQUAL : '==';
+	NOTEQUAL : '!=';
 	ASSIGN : '=' ;
 	SEMI : ';';
 	LPAREN : '(';
@@ -126,7 +116,7 @@ type
 	BoolTypeName :  'bool';
 	CharTypeName : 'char';
 	StringTypeName : 'string';
-	ObjectTypeName : 'object';
+	VoidTypeName : 'void';
 
 STRING : '"' StringCharacters? '"';
 

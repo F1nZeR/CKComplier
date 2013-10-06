@@ -1,8 +1,5 @@
 // Generated from CK.g4 by ANTLR 4.0.1-SNAPSHOT
 namespace CKCompiler {
-#pragma warning disable 3021
-
-using System.Text;
 using Antlr4.Runtime.Tree;
 using IToken = Antlr4.Runtime.IToken;
 

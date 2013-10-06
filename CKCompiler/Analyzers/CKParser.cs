@@ -1,8 +1,5 @@
 // Generated from CK.g4 by ANTLR 4.0.1-SNAPSHOT
 namespace CKCompiler {
-#pragma warning disable 3021
-
-using System.Text;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Atn;
 using Antlr4.Runtime.Misc;
@@ -13,17 +10,17 @@ using DFA = Antlr4.Runtime.Dfa.DFA;
 public partial class CKParser : Parser {
 	public const int
 		CLASS=1, ELSE=2, FALSE=3, IF=4, RETURN=5, VAR=6, WHILE=7, NEW=8, TRUE=9, 
-		VOID=10, DOT=11, NEG=12, MULT=13, DIV=14, PLUS=15, MINUS=16, LE=17, LT=18, 
-		GE=19, GT=20, EQUAL=21, ASSIGN=22, SEMI=23, LPAREN=24, RPAREN=25, LCURLY=26, 
-		RCURLY=27, COMMA=28, COLON=29, IntTypeName=30, FloatTypeName=31, BoolTypeName=32, 
-		CharTypeName=33, StringTypeName=34, ObjectTypeName=35, STRING=36, INTEGER=37, 
-		CHAR=38, FLOAT=39, ID=40, WS=41, COMMENT=42, MULTILINE_COMMENT=43, FALL_THROUGH=44;
+		DOT=10, MULT=11, DIV=12, PLUS=13, MINUS=14, LE=15, LT=16, GE=17, GT=18, 
+		EQUAL=19, NOTEQUAL=20, ASSIGN=21, SEMI=22, LPAREN=23, RPAREN=24, LCURLY=25, 
+		RCURLY=26, COMMA=27, COLON=28, IntTypeName=29, FloatTypeName=30, BoolTypeName=31, 
+		CharTypeName=32, StringTypeName=33, VoidTypeName=34, STRING=35, INTEGER=36, 
+		CHAR=37, FLOAT=38, ID=39, WS=40, COMMENT=41, MULTILINE_COMMENT=42, FALL_THROUGH=43;
 	public static readonly string[] tokenNames = {
 		"<INVALID>", "'class'", "'else'", "'false'", "'if'", "'return'", "'var'", 
-		"'while'", "'new'", "'true'", "'void'", "'.'", "'~'", "'*'", "'/'", "'+'", 
-		"'-'", "'<='", "'<'", "'>='", "'>'", "'=='", "'='", "';'", "'('", "')'", 
-		"'{'", "'}'", "','", "':'", "'int'", "'float'", "'bool'", "'char'", "'string'", 
-		"'object'", "STRING", "INTEGER", "CHAR", "FLOAT", "ID", "WS", "COMMENT", 
+		"'while'", "'new'", "'true'", "'.'", "'*'", "'/'", "'+'", "'-'", "'<='", 
+		"'<'", "'>='", "'>'", "'=='", "'!='", "'='", "';'", "'('", "')'", "'{'", 
+		"'}'", "','", "':'", "'int'", "'float'", "'bool'", "'char'", "'string'", 
+		"'void'", "STRING", "INTEGER", "CHAR", "FLOAT", "ID", "WS", "COMMENT", 
 		"MULTILINE_COMMENT", "FALL_THROUGH"
 	};
 	public const int
@@ -738,7 +735,7 @@ public partial class CKParser : Parser {
 		EnterRule(_localctx, 20, RULE_action);
 		int _la;
 		try {
-			State = 128;
+			State = 129;
 			switch (_input.La(1)) {
 			case LCURLY:
 				EnterOuterAlt(_localctx, 1);
@@ -760,23 +757,30 @@ public partial class CKParser : Parser {
 				State = 114; Match(IF);
 				State = 115; expr(0);
 				State = 116; action();
-				State = 117; Match(ELSE);
-				State = 118; action();
+				State = 119;
+				switch ( Interpreter.AdaptivePredict(_input,10,_ctx) ) {
+				case 1:
+					{
+					State = 117; Match(ELSE);
+					State = 118; action();
+					}
+					break;
+				}
 				}
 				break;
 			case RETURN:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 120; Match(RETURN);
-				State = 122;
+				State = 121; Match(RETURN);
+				State = 123;
 				_la = _input.La(1);
 				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << FALSE) | (1L << NEW) | (1L << TRUE) | (1L << LPAREN) | (1L << STRING) | (1L << INTEGER) | (1L << CHAR) | (1L << FLOAT) | (1L << ID))) != 0)) {
 					{
-					State = 121; expr(0);
+					State = 122; expr(0);
 					}
 				}
 
-				State = 124; Match(SEMI);
+				State = 125; Match(SEMI);
 				}
 				break;
 			case FALSE:
@@ -790,8 +794,8 @@ public partial class CKParser : Parser {
 			case ID:
 				EnterOuterAlt(_localctx, 5);
 				{
-				State = 125; statementExpr();
-				State = 126; Match(SEMI);
+				State = 126; statementExpr();
+				State = 127; Match(SEMI);
 				}
 				break;
 			default:
@@ -840,7 +844,7 @@ public partial class CKParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 130; expr(0);
+			State = 131; expr(0);
 			}
 		}
 		catch (RecognitionException re) {
@@ -891,21 +895,21 @@ public partial class CKParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 132; Match(LCURLY);
-			State = 136;
+			State = 133; Match(LCURLY);
+			State = 137;
 			_errHandler.Sync(this);
 			_la = _input.La(1);
 			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << FALSE) | (1L << IF) | (1L << RETURN) | (1L << VAR) | (1L << WHILE) | (1L << NEW) | (1L << TRUE) | (1L << LPAREN) | (1L << LCURLY) | (1L << STRING) | (1L << INTEGER) | (1L << CHAR) | (1L << FLOAT) | (1L << ID))) != 0)) {
 				{
 				{
-				State = 133; blockStatement();
+				State = 134; blockStatement();
 				}
 				}
-				State = 138;
+				State = 139;
 				_errHandler.Sync(this);
 				_la = _input.La(1);
 			}
-			State = 139; Match(RCURLY);
+			State = 140; Match(RCURLY);
 			}
 		}
 		catch (RecognitionException re) {
@@ -951,7 +955,7 @@ public partial class CKParser : Parser {
 		BlockStatementContext _localctx = new BlockStatementContext(_ctx, State);
 		EnterRule(_localctx, 26, RULE_blockStatement);
 		try {
-			State = 143;
+			State = 144;
 			switch (_input.La(1)) {
 			case FALSE:
 			case IF:
@@ -968,13 +972,13 @@ public partial class CKParser : Parser {
 			case ID:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 141; action();
+				State = 142; action();
 				}
 				break;
 			case VAR:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 142; varDef();
+				State = 143; varDef();
 				}
 				break;
 			default:
@@ -994,10 +998,12 @@ public partial class CKParser : Parser {
 
 	public partial class ExprContext : ParserRuleContext {
 		public ITerminalNode RPAREN() { return GetToken(CKParser.RPAREN, 0); }
+		public ITerminalNode GE() { return GetToken(CKParser.GE, 0); }
 		public ITerminalNode LT() { return GetToken(CKParser.LT, 0); }
 		public IReadOnlyList<ExprContext> expr() {
 			return GetRuleContexts<ExprContext>();
 		}
+		public ITerminalNode EQUAL() { return GetToken(CKParser.EQUAL, 0); }
 		public ITerminalNode ASSIGN() { return GetToken(CKParser.ASSIGN, 0); }
 		public ITerminalNode NEW() { return GetToken(CKParser.NEW, 0); }
 		public ITerminalNode GT() { return GetToken(CKParser.GT, 0); }
@@ -1013,10 +1019,12 @@ public partial class CKParser : Parser {
 		public ExprContext expr(int i) {
 			return GetRuleContext<ExprContext>(i);
 		}
+		public ITerminalNode LE() { return GetToken(CKParser.LE, 0); }
 		public ITerminalNode LPAREN() { return GetToken(CKParser.LPAREN, 0); }
 		public ExprListContext exprList() {
 			return GetRuleContext<ExprListContext>(0);
 		}
+		public ITerminalNode NOTEQUAL() { return GetToken(CKParser.NOTEQUAL, 0); }
 		public ExprContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -1050,7 +1058,7 @@ public partial class CKParser : Parser {
 			int _alt;
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 149;
+			State = 150;
 			switch (_input.La(1)) {
 			case FALSE:
 			case TRUE:
@@ -1061,42 +1069,42 @@ public partial class CKParser : Parser {
 			case FLOAT:
 			case ID:
 				{
-				State = 146; primary();
+				State = 147; primary();
 				}
 				break;
 			case NEW:
 				{
-				State = 147; Match(NEW);
-				State = 148; Match(ID);
+				State = 148; Match(NEW);
+				State = 149; Match(ID);
 				}
 				break;
 			default:
 				throw new NoViableAltException(this);
 			}
 			_ctx.stop = _input.Lt(-1);
-			State = 174;
+			State = 178;
 			_errHandler.Sync(this);
-			_alt = Interpreter.AdaptivePredict(_input,17,_ctx);
+			_alt = Interpreter.AdaptivePredict(_input,18,_ctx);
 			while ( _alt!=2 && _alt!=-1 ) {
 				if ( _alt==1 ) {
 					if ( _parseListeners!=null ) TriggerExitRuleEvent();
 					_prevctx = _localctx;
 					{
-					State = 172;
-					switch ( Interpreter.AdaptivePredict(_input,16,_ctx) ) {
+					State = 176;
+					switch ( Interpreter.AdaptivePredict(_input,17,_ctx) ) {
 					case 1:
 						{
 						_localctx = new ExprContext(_parentctx, _parentState);
 						PushNewRecursionContext(_localctx, _startState, RULE_expr);
-						State = 151;
-						if (!(Precpred(_ctx, 4))) throw new FailedPredicateException(this, "Precpred(_ctx, 4)");
 						State = 152;
+						if (!(Precpred(_ctx, 5))) throw new FailedPredicateException(this, "Precpred(_ctx, 5)");
+						State = 153;
 						_la = _input.La(1);
 						if ( !(_la==MULT || _la==DIV) ) {
 						_errHandler.RecoverInline(this);
 						}
 						Consume();
-						State = 153; expr(5);
+						State = 154; expr(6);
 						}
 						break;
 
@@ -1104,15 +1112,15 @@ public partial class CKParser : Parser {
 						{
 						_localctx = new ExprContext(_parentctx, _parentState);
 						PushNewRecursionContext(_localctx, _startState, RULE_expr);
-						State = 154;
-						if (!(Precpred(_ctx, 3))) throw new FailedPredicateException(this, "Precpred(_ctx, 3)");
 						State = 155;
+						if (!(Precpred(_ctx, 4))) throw new FailedPredicateException(this, "Precpred(_ctx, 4)");
+						State = 156;
 						_la = _input.La(1);
 						if ( !(_la==PLUS || _la==MINUS) ) {
 						_errHandler.RecoverInline(this);
 						}
 						Consume();
-						State = 156; expr(4);
+						State = 157; expr(5);
 						}
 						break;
 
@@ -1120,15 +1128,15 @@ public partial class CKParser : Parser {
 						{
 						_localctx = new ExprContext(_parentctx, _parentState);
 						PushNewRecursionContext(_localctx, _startState, RULE_expr);
-						State = 157;
-						if (!(Precpred(_ctx, 2))) throw new FailedPredicateException(this, "Precpred(_ctx, 2)");
 						State = 158;
+						if (!(Precpred(_ctx, 3))) throw new FailedPredicateException(this, "Precpred(_ctx, 3)");
+						State = 159;
 						_la = _input.La(1);
-						if ( !(_la==LT || _la==GT) ) {
+						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << LE) | (1L << LT) | (1L << GE) | (1L << GT))) != 0)) ) {
 						_errHandler.RecoverInline(this);
 						}
 						Consume();
-						State = 159; expr(3);
+						State = 160; expr(4);
 						}
 						break;
 
@@ -1136,12 +1144,15 @@ public partial class CKParser : Parser {
 						{
 						_localctx = new ExprContext(_parentctx, _parentState);
 						PushNewRecursionContext(_localctx, _startState, RULE_expr);
-						State = 160;
-						if (!(Precpred(_ctx, 1))) throw new FailedPredicateException(this, "Precpred(_ctx, 1)");
-						{
-						State = 161; Match(ASSIGN);
+						State = 161;
+						if (!(Precpred(_ctx, 2))) throw new FailedPredicateException(this, "Precpred(_ctx, 2)");
+						State = 162;
+						_la = _input.La(1);
+						if ( !(_la==EQUAL || _la==NOTEQUAL) ) {
+						_errHandler.RecoverInline(this);
 						}
-						State = 162; expr(1);
+						Consume();
+						State = 163; expr(3);
 						}
 						break;
 
@@ -1149,10 +1160,12 @@ public partial class CKParser : Parser {
 						{
 						_localctx = new ExprContext(_parentctx, _parentState);
 						PushNewRecursionContext(_localctx, _startState, RULE_expr);
-						State = 163;
-						if (!(Precpred(_ctx, 7))) throw new FailedPredicateException(this, "Precpred(_ctx, 7)");
-						State = 164; Match(DOT);
-						State = 165; Match(ID);
+						State = 164;
+						if (!(Precpred(_ctx, 1))) throw new FailedPredicateException(this, "Precpred(_ctx, 1)");
+						{
+						State = 165; Match(ASSIGN);
+						}
+						State = 166; expr(1);
 						}
 						break;
 
@@ -1160,26 +1173,37 @@ public partial class CKParser : Parser {
 						{
 						_localctx = new ExprContext(_parentctx, _parentState);
 						PushNewRecursionContext(_localctx, _startState, RULE_expr);
-						State = 166;
-						if (!(Precpred(_ctx, 6))) throw new FailedPredicateException(this, "Precpred(_ctx, 6)");
-						State = 167; Match(LPAREN);
-						State = 169;
+						State = 167;
+						if (!(Precpred(_ctx, 8))) throw new FailedPredicateException(this, "Precpred(_ctx, 8)");
+						State = 168; Match(DOT);
+						State = 169; Match(ID);
+						}
+						break;
+
+					case 7:
+						{
+						_localctx = new ExprContext(_parentctx, _parentState);
+						PushNewRecursionContext(_localctx, _startState, RULE_expr);
+						State = 170;
+						if (!(Precpred(_ctx, 7))) throw new FailedPredicateException(this, "Precpred(_ctx, 7)");
+						State = 171; Match(LPAREN);
+						State = 173;
 						_la = _input.La(1);
 						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << FALSE) | (1L << NEW) | (1L << TRUE) | (1L << LPAREN) | (1L << STRING) | (1L << INTEGER) | (1L << CHAR) | (1L << FLOAT) | (1L << ID))) != 0)) {
 							{
-							State = 168; exprList();
+							State = 172; exprList();
 							}
 						}
 
-						State = 171; Match(RPAREN);
+						State = 175; Match(RPAREN);
 						}
 						break;
 					}
 					} 
 				}
-				State = 176;
+				State = 180;
 				_errHandler.Sync(this);
-				_alt = Interpreter.AdaptivePredict(_input,17,_ctx);
+				_alt = Interpreter.AdaptivePredict(_input,18,_ctx);
 			}
 			}
 		}
@@ -1229,14 +1253,14 @@ public partial class CKParser : Parser {
 		PrimaryContext _localctx = new PrimaryContext(_ctx, State);
 		EnterRule(_localctx, 30, RULE_primary);
 		try {
-			State = 183;
+			State = 187;
 			switch (_input.La(1)) {
 			case LPAREN:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 177; Match(LPAREN);
-				State = 178; expr(0);
-				State = 179; Match(RPAREN);
+				State = 181; Match(LPAREN);
+				State = 182; expr(0);
+				State = 183; Match(RPAREN);
 				}
 				break;
 			case FALSE:
@@ -1247,13 +1271,13 @@ public partial class CKParser : Parser {
 			case FLOAT:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 181; literal();
+				State = 185; literal();
 				}
 				break;
 			case ID:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 182; Match(ID);
+				State = 186; Match(ID);
 				}
 				break;
 			default:
@@ -1310,18 +1334,18 @@ public partial class CKParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 185; expr(0);
-			State = 190;
+			State = 189; expr(0);
+			State = 194;
 			_errHandler.Sync(this);
 			_la = _input.La(1);
 			while (_la==COMMA) {
 				{
 				{
-				State = 186; Match(COMMA);
-				State = 187; expr(0);
+				State = 190; Match(COMMA);
+				State = 191; expr(0);
 				}
 				}
-				State = 192;
+				State = 196;
 				_errHandler.Sync(this);
 				_la = _input.La(1);
 			}
@@ -1373,7 +1397,7 @@ public partial class CKParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 193;
+			State = 197;
 			_la = _input.La(1);
 			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << FALSE) | (1L << TRUE) | (1L << STRING) | (1L << INTEGER) | (1L << CHAR) | (1L << FLOAT))) != 0)) ) {
 			_errHandler.RecoverInline(this);
@@ -1394,12 +1418,12 @@ public partial class CKParser : Parser {
 
 	public partial class TypeContext : ParserRuleContext {
 		public ITerminalNode IntTypeName() { return GetToken(CKParser.IntTypeName, 0); }
+		public ITerminalNode VoidTypeName() { return GetToken(CKParser.VoidTypeName, 0); }
 		public ITerminalNode StringTypeName() { return GetToken(CKParser.StringTypeName, 0); }
 		public ITerminalNode BoolTypeName() { return GetToken(CKParser.BoolTypeName, 0); }
 		public ITerminalNode ID() { return GetToken(CKParser.ID, 0); }
 		public ITerminalNode FloatTypeName() { return GetToken(CKParser.FloatTypeName, 0); }
 		public ITerminalNode CharTypeName() { return GetToken(CKParser.CharTypeName, 0); }
-		public ITerminalNode ObjectTypeName() { return GetToken(CKParser.ObjectTypeName, 0); }
 		public TypeContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -1428,9 +1452,9 @@ public partial class CKParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 195;
+			State = 199;
 			_la = _input.La(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << IntTypeName) | (1L << FloatTypeName) | (1L << BoolTypeName) | (1L << CharTypeName) | (1L << StringTypeName) | (1L << ObjectTypeName) | (1L << ID))) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << IntTypeName) | (1L << FloatTypeName) | (1L << BoolTypeName) | (1L << CharTypeName) | (1L << StringTypeName) | (1L << VoidTypeName) | (1L << ID))) != 0)) ) {
 			_errHandler.RecoverInline(this);
 			}
 			Consume();
@@ -1455,23 +1479,25 @@ public partial class CKParser : Parser {
 	}
 	private bool expr_sempred(ExprContext _localctx, int predIndex) {
 		switch (predIndex) {
-		case 0: return Precpred(_ctx, 4);
+		case 0: return Precpred(_ctx, 5);
 
-		case 1: return Precpred(_ctx, 3);
+		case 1: return Precpred(_ctx, 4);
 
-		case 2: return Precpred(_ctx, 2);
+		case 2: return Precpred(_ctx, 3);
 
-		case 3: return Precpred(_ctx, 1);
+		case 3: return Precpred(_ctx, 2);
 
-		case 4: return Precpred(_ctx, 7);
+		case 4: return Precpred(_ctx, 1);
 
-		case 5: return Precpred(_ctx, 6);
+		case 5: return Precpred(_ctx, 8);
+
+		case 6: return Precpred(_ctx, 7);
 		}
 		return true;
 	}
 
 	public static readonly string _serializedATN =
-		"\x5\x3.\xC8\x4\x2\t\x2\x4\x3\t\x3\x4\x4\t\x4\x4\x5\t\x5\x4\x6\t\x6\x4"+
+		"\x5\x3-\xCC\x4\x2\t\x2\x4\x3\t\x3\x4\x4\t\x4\x4\x5\t\x5\x4\x6\t\x6\x4"+
 		"\a\t\a\x4\b\t\b\x4\t\t\t\x4\n\t\n\x4\v\t\v\x4\f\t\f\x4\r\t\r\x4\xE\t\xE"+
 		"\x4\xF\t\xF\x4\x10\t\x10\x4\x11\t\x11\x4\x12\t\x12\x4\x13\t\x13\x4\x14"+
 		"\t\x14\x3\x2\x6\x2*\n\x2\r\x2\xE\x2+\x3\x3\x3\x3\x3\x3\x3\x3\x5\x3\x32"+
@@ -1480,70 +1506,72 @@ public partial class CKParser : Parser {
 		"\xE\x6J\v\x6\x3\x6\x3\x6\x3\a\x3\a\x3\a\x3\a\x5\aR\n\a\x3\b\x3\b\x3\b"+
 		"\x5\bW\n\b\x3\t\x3\t\x3\t\x5\t\\\n\t\x3\t\x3\t\x3\t\x3\t\x5\t\x62\n\t"+
 		"\x3\t\x3\t\x3\n\x3\n\x3\n\a\ni\n\n\f\n\xE\nl\v\n\x3\v\x3\v\x3\f\x3\f\x3"+
-		"\f\x3\f\x3\f\x3\f\x3\f\x3\f\x3\f\x3\f\x3\f\x3\f\x3\f\x5\f}\n\f\x3\f\x3"+
-		"\f\x3\f\x3\f\x5\f\x83\n\f\x3\r\x3\r\x3\xE\x3\xE\a\xE\x89\n\xE\f\xE\xE"+
-		"\xE\x8C\v\xE\x3\xE\x3\xE\x3\xF\x3\xF\x5\xF\x92\n\xF\x3\x10\x3\x10\x3\x10"+
-		"\x3\x10\x5\x10\x98\n\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3"+
-		"\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3"+
-		"\x10\x3\x10\x5\x10\xAC\n\x10\x3\x10\a\x10\xAF\n\x10\f\x10\xE\x10\xB2\v"+
-		"\x10\x3\x11\x3\x11\x3\x11\x3\x11\x3\x11\x3\x11\x5\x11\xBA\n\x11\x3\x12"+
-		"\x3\x12\x3\x12\a\x12\xBF\n\x12\f\x12\xE\x12\xC2\v\x12\x3\x13\x3\x13\x3"+
-		"\x14\x3\x14\x3\x14\x2\x2\x3\x1E\x15\x2\x2\x4\x2\x6\x2\b\x2\n\x2\f\x2\xE"+
-		"\x2\x10\x2\x12\x2\x14\x2\x16\x2\x18\x2\x1A\x2\x1C\x2\x1E\x2 \x2\"\x2$"+
-		"\x2&\x2\x2\a\x3\xF\x10\x3\x11\x12\x4\x14\x14\x16\x16\x5\x5\x5\v\v&)\x4"+
-		" %**\xD0\x2)\x3\x2\x2\x2\x4-\x3\x2\x2\x2\x6\x35\x3\x2\x2\x2\b@\x3\x2\x2"+
-		"\x2\n\x42\x3\x2\x2\x2\fM\x3\x2\x2\x2\xES\x3\x2\x2\x2\x10X\x3\x2\x2\x2"+
-		"\x12\x65\x3\x2\x2\x2\x14m\x3\x2\x2\x2\x16\x82\x3\x2\x2\x2\x18\x84\x3\x2"+
-		"\x2\x2\x1A\x86\x3\x2\x2\x2\x1C\x91\x3\x2\x2\x2\x1E\x97\x3\x2\x2\x2 \xB9"+
-		"\x3\x2\x2\x2\"\xBB\x3\x2\x2\x2$\xC3\x3\x2\x2\x2&\xC5\x3\x2\x2\x2(*\x5"+
-		"\x4\x3\x2)(\x3\x2\x2\x2*+\x3\x2\x2\x2+)\x3\x2\x2\x2+,\x3\x2\x2\x2,\x3"+
-		"\x3\x2\x2\x2-.\a\x3\x2\x2.\x31\a*\x2\x2/\x30\a\x1F\x2\x2\x30\x32\a*\x2"+
-		"\x2\x31/\x3\x2\x2\x2\x31\x32\x3\x2\x2\x2\x32\x33\x3\x2\x2\x2\x33\x34\x5"+
-		"\x6\x4\x2\x34\x5\x3\x2\x2\x2\x35\x39\a\x1C\x2\x2\x36\x38\x5\b\x5\x2\x37"+
-		"\x36\x3\x2\x2\x2\x38;\x3\x2\x2\x2\x39\x37\x3\x2\x2\x2\x39:\x3\x2\x2\x2"+
-		":<\x3\x2\x2\x2;\x39\x3\x2\x2\x2<=\a\x1D\x2\x2=\a\x3\x2\x2\x2>\x41\x5\x10"+
-		"\t\x2?\x41\x5\n\x6\x2@>\x3\x2\x2\x2@?\x3\x2\x2\x2\x41\t\x3\x2\x2\x2\x42"+
-		"\x43\a\b\x2\x2\x43H\x5\xE\b\x2\x44\x45\a\x1E\x2\x2\x45G\x5\xE\b\x2\x46"+
-		"\x44\x3\x2\x2\x2GJ\x3\x2\x2\x2H\x46\x3\x2\x2\x2HI\x3\x2\x2\x2IK\x3\x2"+
-		"\x2\x2JH\x3\x2\x2\x2KL\a\x19\x2\x2L\v\x3\x2\x2\x2MN\a*\x2\x2NQ\a\x1F\x2"+
-		"\x2OR\x5&\x14\x2PR\a*\x2\x2QO\x3\x2\x2\x2QP\x3\x2\x2\x2R\r\x3\x2\x2\x2"+
-		"SV\x5\f\a\x2TU\a\x18\x2\x2UW\x5\x1E\x10\x2VT\x3\x2\x2\x2VW\x3\x2\x2\x2"+
-		"W\xF\x3\x2\x2\x2XY\a*\x2\x2Y[\a\x1A\x2\x2Z\\\x5\x12\n\x2[Z\x3\x2\x2\x2"+
-		"[\\\x3\x2\x2\x2\\]\x3\x2\x2\x2]^\a\x1B\x2\x2^\x61\a\x1F\x2\x2_\x62\x5"+
-		"&\x14\x2`\x62\a*\x2\x2\x61_\x3\x2\x2\x2\x61`\x3\x2\x2\x2\x62\x63\x3\x2"+
-		"\x2\x2\x63\x64\x5\x14\v\x2\x64\x11\x3\x2\x2\x2\x65j\x5\f\a\x2\x66g\a\x1E"+
-		"\x2\x2gi\x5\f\a\x2h\x66\x3\x2\x2\x2il\x3\x2\x2\x2jh\x3\x2\x2\x2jk\x3\x2"+
-		"\x2\x2k\x13\x3\x2\x2\x2lj\x3\x2\x2\x2mn\x5\x1A\xE\x2n\x15\x3\x2\x2\x2"+
-		"o\x83\x5\x1A\xE\x2pq\a\t\x2\x2qr\x5\x1E\x10\x2rs\x5\x16\f\x2s\x83\x3\x2"+
-		"\x2\x2tu\a\x6\x2\x2uv\x5\x1E\x10\x2vw\x5\x16\f\x2wx\a\x4\x2\x2xy\x5\x16"+
-		"\f\x2y\x83\x3\x2\x2\x2z|\a\a\x2\x2{}\x5\x1E\x10\x2|{\x3\x2\x2\x2|}\x3"+
-		"\x2\x2\x2}~\x3\x2\x2\x2~\x83\a\x19\x2\x2\x7F\x80\x5\x18\r\x2\x80\x81\a"+
-		"\x19\x2\x2\x81\x83\x3\x2\x2\x2\x82o\x3\x2\x2\x2\x82p\x3\x2\x2\x2\x82t"+
-		"\x3\x2\x2\x2\x82z\x3\x2\x2\x2\x82\x7F\x3\x2\x2\x2\x83\x17\x3\x2\x2\x2"+
-		"\x84\x85\x5\x1E\x10\x2\x85\x19\x3\x2\x2\x2\x86\x8A\a\x1C\x2\x2\x87\x89"+
-		"\x5\x1C\xF\x2\x88\x87\x3\x2\x2\x2\x89\x8C\x3\x2\x2\x2\x8A\x88\x3\x2\x2"+
-		"\x2\x8A\x8B\x3\x2\x2\x2\x8B\x8D\x3\x2\x2\x2\x8C\x8A\x3\x2\x2\x2\x8D\x8E"+
-		"\a\x1D\x2\x2\x8E\x1B\x3\x2\x2\x2\x8F\x92\x5\x16\f\x2\x90\x92\x5\n\x6\x2"+
-		"\x91\x8F\x3\x2\x2\x2\x91\x90\x3\x2\x2\x2\x92\x1D\x3\x2\x2\x2\x93\x94\b"+
-		"\x10\x1\x2\x94\x98\x5 \x11\x2\x95\x96\a\n\x2\x2\x96\x98\a*\x2\x2\x97\x93"+
-		"\x3\x2\x2\x2\x97\x95\x3\x2\x2\x2\x98\xB0\x3\x2\x2\x2\x99\x9A\f\x6\x2\x2"+
-		"\x9A\x9B\t\x2\x2\x2\x9B\xAF\x5\x1E\x10\a\x9C\x9D\f\x5\x2\x2\x9D\x9E\t"+
-		"\x3\x2\x2\x9E\xAF\x5\x1E\x10\x6\x9F\xA0\f\x4\x2\x2\xA0\xA1\t\x4\x2\x2"+
-		"\xA1\xAF\x5\x1E\x10\x5\xA2\xA3\f\x3\x2\x2\xA3\xA4\a\x18\x2\x2\xA4\xAF"+
-		"\x5\x1E\x10\x3\xA5\xA6\f\t\x2\x2\xA6\xA7\a\r\x2\x2\xA7\xAF\a*\x2\x2\xA8"+
-		"\xA9\f\b\x2\x2\xA9\xAB\a\x1A\x2\x2\xAA\xAC\x5\"\x12\x2\xAB\xAA\x3\x2\x2"+
-		"\x2\xAB\xAC\x3\x2\x2\x2\xAC\xAD\x3\x2\x2\x2\xAD\xAF\a\x1B\x2\x2\xAE\x99"+
-		"\x3\x2\x2\x2\xAE\x9C\x3\x2\x2\x2\xAE\x9F\x3\x2\x2\x2\xAE\xA2\x3\x2\x2"+
-		"\x2\xAE\xA5\x3\x2\x2\x2\xAE\xA8\x3\x2\x2\x2\xAF\xB2\x3\x2\x2\x2\xB0\xAE"+
-		"\x3\x2\x2\x2\xB0\xB1\x3\x2\x2\x2\xB1\x1F\x3\x2\x2\x2\xB2\xB0\x3\x2\x2"+
-		"\x2\xB3\xB4\a\x1A\x2\x2\xB4\xB5\x5\x1E\x10\x2\xB5\xB6\a\x1B\x2\x2\xB6"+
-		"\xBA\x3\x2\x2\x2\xB7\xBA\x5$\x13\x2\xB8\xBA\a*\x2\x2\xB9\xB3\x3\x2\x2"+
-		"\x2\xB9\xB7\x3\x2\x2\x2\xB9\xB8\x3\x2\x2\x2\xBA!\x3\x2\x2\x2\xBB\xC0\x5"+
-		"\x1E\x10\x2\xBC\xBD\a\x1E\x2\x2\xBD\xBF\x5\x1E\x10\x2\xBE\xBC\x3\x2\x2"+
-		"\x2\xBF\xC2\x3\x2\x2\x2\xC0\xBE\x3\x2\x2\x2\xC0\xC1\x3\x2\x2\x2\xC1#\x3"+
-		"\x2\x2\x2\xC2\xC0\x3\x2\x2\x2\xC3\xC4\t\x5\x2\x2\xC4%\x3\x2\x2\x2\xC5"+
-		"\xC6\t\x6\x2\x2\xC6\'\x3\x2\x2\x2\x16+\x31\x39@HQV[\x61j|\x82\x8A\x91"+
-		"\x97\xAB\xAE\xB0\xB9\xC0";
+		"\f\x3\f\x3\f\x3\f\x3\f\x3\f\x3\f\x3\f\x5\fz\n\f\x3\f\x3\f\x5\f~\n\f\x3"+
+		"\f\x3\f\x3\f\x3\f\x5\f\x84\n\f\x3\r\x3\r\x3\xE\x3\xE\a\xE\x8A\n\xE\f\xE"+
+		"\xE\xE\x8D\v\xE\x3\xE\x3\xE\x3\xF\x3\xF\x5\xF\x93\n\xF\x3\x10\x3\x10\x3"+
+		"\x10\x3\x10\x5\x10\x99\n\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10"+
+		"\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10"+
+		"\x3\x10\x3\x10\x3\x10\x3\x10\x3\x10\x5\x10\xB0\n\x10\x3\x10\a\x10\xB3"+
+		"\n\x10\f\x10\xE\x10\xB6\v\x10\x3\x11\x3\x11\x3\x11\x3\x11\x3\x11\x3\x11"+
+		"\x5\x11\xBE\n\x11\x3\x12\x3\x12\x3\x12\a\x12\xC3\n\x12\f\x12\xE\x12\xC6"+
+		"\v\x12\x3\x13\x3\x13\x3\x14\x3\x14\x3\x14\x2\x2\x3\x1E\x15\x2\x2\x4\x2"+
+		"\x6\x2\b\x2\n\x2\f\x2\xE\x2\x10\x2\x12\x2\x14\x2\x16\x2\x18\x2\x1A\x2"+
+		"\x1C\x2\x1E\x2 \x2\"\x2$\x2&\x2\x2\b\x3\r\xE\x3\xF\x10\x3\x11\x14\x3\x15"+
+		"\x16\x5\x5\x5\v\v%(\x4\x1F$))\xD6\x2)\x3\x2\x2\x2\x4-\x3\x2\x2\x2\x6\x35"+
+		"\x3\x2\x2\x2\b@\x3\x2\x2\x2\n\x42\x3\x2\x2\x2\fM\x3\x2\x2\x2\xES\x3\x2"+
+		"\x2\x2\x10X\x3\x2\x2\x2\x12\x65\x3\x2\x2\x2\x14m\x3\x2\x2\x2\x16\x83\x3"+
+		"\x2\x2\x2\x18\x85\x3\x2\x2\x2\x1A\x87\x3\x2\x2\x2\x1C\x92\x3\x2\x2\x2"+
+		"\x1E\x98\x3\x2\x2\x2 \xBD\x3\x2\x2\x2\"\xBF\x3\x2\x2\x2$\xC7\x3\x2\x2"+
+		"\x2&\xC9\x3\x2\x2\x2(*\x5\x4\x3\x2)(\x3\x2\x2\x2*+\x3\x2\x2\x2+)\x3\x2"+
+		"\x2\x2+,\x3\x2\x2\x2,\x3\x3\x2\x2\x2-.\a\x3\x2\x2.\x31\a)\x2\x2/\x30\a"+
+		"\x1E\x2\x2\x30\x32\a)\x2\x2\x31/\x3\x2\x2\x2\x31\x32\x3\x2\x2\x2\x32\x33"+
+		"\x3\x2\x2\x2\x33\x34\x5\x6\x4\x2\x34\x5\x3\x2\x2\x2\x35\x39\a\x1B\x2\x2"+
+		"\x36\x38\x5\b\x5\x2\x37\x36\x3\x2\x2\x2\x38;\x3\x2\x2\x2\x39\x37\x3\x2"+
+		"\x2\x2\x39:\x3\x2\x2\x2:<\x3\x2\x2\x2;\x39\x3\x2\x2\x2<=\a\x1C\x2\x2="+
+		"\a\x3\x2\x2\x2>\x41\x5\x10\t\x2?\x41\x5\n\x6\x2@>\x3\x2\x2\x2@?\x3\x2"+
+		"\x2\x2\x41\t\x3\x2\x2\x2\x42\x43\a\b\x2\x2\x43H\x5\xE\b\x2\x44\x45\a\x1D"+
+		"\x2\x2\x45G\x5\xE\b\x2\x46\x44\x3\x2\x2\x2GJ\x3\x2\x2\x2H\x46\x3\x2\x2"+
+		"\x2HI\x3\x2\x2\x2IK\x3\x2\x2\x2JH\x3\x2\x2\x2KL\a\x18\x2\x2L\v\x3\x2\x2"+
+		"\x2MN\a)\x2\x2NQ\a\x1E\x2\x2OR\x5&\x14\x2PR\a)\x2\x2QO\x3\x2\x2\x2QP\x3"+
+		"\x2\x2\x2R\r\x3\x2\x2\x2SV\x5\f\a\x2TU\a\x17\x2\x2UW\x5\x1E\x10\x2VT\x3"+
+		"\x2\x2\x2VW\x3\x2\x2\x2W\xF\x3\x2\x2\x2XY\a)\x2\x2Y[\a\x19\x2\x2Z\\\x5"+
+		"\x12\n\x2[Z\x3\x2\x2\x2[\\\x3\x2\x2\x2\\]\x3\x2\x2\x2]^\a\x1A\x2\x2^\x61"+
+		"\a\x1E\x2\x2_\x62\x5&\x14\x2`\x62\a)\x2\x2\x61_\x3\x2\x2\x2\x61`\x3\x2"+
+		"\x2\x2\x62\x63\x3\x2\x2\x2\x63\x64\x5\x14\v\x2\x64\x11\x3\x2\x2\x2\x65"+
+		"j\x5\f\a\x2\x66g\a\x1D\x2\x2gi\x5\f\a\x2h\x66\x3\x2\x2\x2il\x3\x2\x2\x2"+
+		"jh\x3\x2\x2\x2jk\x3\x2\x2\x2k\x13\x3\x2\x2\x2lj\x3\x2\x2\x2mn\x5\x1A\xE"+
+		"\x2n\x15\x3\x2\x2\x2o\x84\x5\x1A\xE\x2pq\a\t\x2\x2qr\x5\x1E\x10\x2rs\x5"+
+		"\x16\f\x2s\x84\x3\x2\x2\x2tu\a\x6\x2\x2uv\x5\x1E\x10\x2vy\x5\x16\f\x2"+
+		"wx\a\x4\x2\x2xz\x5\x16\f\x2yw\x3\x2\x2\x2yz\x3\x2\x2\x2z\x84\x3\x2\x2"+
+		"\x2{}\a\a\x2\x2|~\x5\x1E\x10\x2}|\x3\x2\x2\x2}~\x3\x2\x2\x2~\x7F\x3\x2"+
+		"\x2\x2\x7F\x84\a\x18\x2\x2\x80\x81\x5\x18\r\x2\x81\x82\a\x18\x2\x2\x82"+
+		"\x84\x3\x2\x2\x2\x83o\x3\x2\x2\x2\x83p\x3\x2\x2\x2\x83t\x3\x2\x2\x2\x83"+
+		"{\x3\x2\x2\x2\x83\x80\x3\x2\x2\x2\x84\x17\x3\x2\x2\x2\x85\x86\x5\x1E\x10"+
+		"\x2\x86\x19\x3\x2\x2\x2\x87\x8B\a\x1B\x2\x2\x88\x8A\x5\x1C\xF\x2\x89\x88"+
+		"\x3\x2\x2\x2\x8A\x8D\x3\x2\x2\x2\x8B\x89\x3\x2\x2\x2\x8B\x8C\x3\x2\x2"+
+		"\x2\x8C\x8E\x3\x2\x2\x2\x8D\x8B\x3\x2\x2\x2\x8E\x8F\a\x1C\x2\x2\x8F\x1B"+
+		"\x3\x2\x2\x2\x90\x93\x5\x16\f\x2\x91\x93\x5\n\x6\x2\x92\x90\x3\x2\x2\x2"+
+		"\x92\x91\x3\x2\x2\x2\x93\x1D\x3\x2\x2\x2\x94\x95\b\x10\x1\x2\x95\x99\x5"+
+		" \x11\x2\x96\x97\a\n\x2\x2\x97\x99\a)\x2\x2\x98\x94\x3\x2\x2\x2\x98\x96"+
+		"\x3\x2\x2\x2\x99\xB4\x3\x2\x2\x2\x9A\x9B\f\a\x2\x2\x9B\x9C\t\x2\x2\x2"+
+		"\x9C\xB3\x5\x1E\x10\b\x9D\x9E\f\x6\x2\x2\x9E\x9F\t\x3\x2\x2\x9F\xB3\x5"+
+		"\x1E\x10\a\xA0\xA1\f\x5\x2\x2\xA1\xA2\t\x4\x2\x2\xA2\xB3\x5\x1E\x10\x6"+
+		"\xA3\xA4\f\x4\x2\x2\xA4\xA5\t\x5\x2\x2\xA5\xB3\x5\x1E\x10\x5\xA6\xA7\f"+
+		"\x3\x2\x2\xA7\xA8\a\x17\x2\x2\xA8\xB3\x5\x1E\x10\x3\xA9\xAA\f\n\x2\x2"+
+		"\xAA\xAB\a\f\x2\x2\xAB\xB3\a)\x2\x2\xAC\xAD\f\t\x2\x2\xAD\xAF\a\x19\x2"+
+		"\x2\xAE\xB0\x5\"\x12\x2\xAF\xAE\x3\x2\x2\x2\xAF\xB0\x3\x2\x2\x2\xB0\xB1"+
+		"\x3\x2\x2\x2\xB1\xB3\a\x1A\x2\x2\xB2\x9A\x3\x2\x2\x2\xB2\x9D\x3\x2\x2"+
+		"\x2\xB2\xA0\x3\x2\x2\x2\xB2\xA3\x3\x2\x2\x2\xB2\xA6\x3\x2\x2\x2\xB2\xA9"+
+		"\x3\x2\x2\x2\xB2\xAC\x3\x2\x2\x2\xB3\xB6\x3\x2\x2\x2\xB4\xB2\x3\x2\x2"+
+		"\x2\xB4\xB5\x3\x2\x2\x2\xB5\x1F\x3\x2\x2\x2\xB6\xB4\x3\x2\x2\x2\xB7\xB8"+
+		"\a\x19\x2\x2\xB8\xB9\x5\x1E\x10\x2\xB9\xBA\a\x1A\x2\x2\xBA\xBE\x3\x2\x2"+
+		"\x2\xBB\xBE\x5$\x13\x2\xBC\xBE\a)\x2\x2\xBD\xB7\x3\x2\x2\x2\xBD\xBB\x3"+
+		"\x2\x2\x2\xBD\xBC\x3\x2\x2\x2\xBE!\x3\x2\x2\x2\xBF\xC4\x5\x1E\x10\x2\xC0"+
+		"\xC1\a\x1D\x2\x2\xC1\xC3\x5\x1E\x10\x2\xC2\xC0\x3\x2\x2\x2\xC3\xC6\x3"+
+		"\x2\x2\x2\xC4\xC2\x3\x2\x2\x2\xC4\xC5\x3\x2\x2\x2\xC5#\x3\x2\x2\x2\xC6"+
+		"\xC4\x3\x2\x2\x2\xC7\xC8\t\x6\x2\x2\xC8%\x3\x2\x2\x2\xC9\xCA\t\a\x2\x2"+
+		"\xCA\'\x3\x2\x2\x2\x17+\x31\x39@HQV[\x61jy}\x83\x8B\x92\x98\xAF\xB2\xB4"+
+		"\xBD\xC4";
 	public static readonly ATN _ATN =
 		ATNSimulator.Deserialize(_serializedATN.ToCharArray());
 }

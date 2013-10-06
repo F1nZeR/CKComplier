@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
+using CKCompiler.Core.Errors;
 using CKCompiler.Core.ObjectDefs;
 using CKCompiler.Tokens;
 
@@ -25,12 +26,12 @@ namespace CKCompiler.Core
         private TypeBuilder _currentTypeBuilder;
         private ILGenerator _currentIlGenerator;
 
-        protected MethodInfo WriteStringLineMethod;
-        protected MethodInfo WriteIntLineMethod;
-        protected MethodInfo WriteStringMethod;
-        protected MethodInfo WriteIntMethod;
-        protected MethodInfo ReadMethod;
-        protected MethodInfo IntParseMethod;
+        protected MethodInfo WriteStringLineMethod,
+            WriteIntLineMethod,
+            WriteStringMethod,
+            WriteIntMethod,
+            ReadMethod,
+            IntParseMethod;
 
         private Dictionary<string, TypeBuilder> _classBuilders;
         private Dictionary<string, Dictionary<string, FieldObjectDef>> _fields;
@@ -38,34 +39,40 @@ namespace CKCompiler.Core
         private Dictionary<string, ConstructorBuilder> _constructors;
 
         private Dictionary<string, ArgObjectDef> _currentArgs;
-        private MethodBuilder _entryPoint;
+        private MethodBuilder _entryPoint, _currentFunction;
 
-        public static Type BoolType = typeof(bool);
-        public static Type IntegerType = typeof(int);
-        public static Type FloatType = typeof(float);
-        public static Type StringType = typeof(string);
-        
+        public List<CompilerError> Errors { get; set; }
+
+        public static Type BoolType = typeof(bool),
+            IntegerType = typeof(int),
+            FloatType = typeof(float),
+            StringType = typeof(string),
+            VoidType = typeof(void),
+            CharType = typeof(char);
+
         public CodeGen(IParseTree programContext, string programName)
         {
             _programContext = programContext;
             _programName = programName;
 
-            WriteStringLineMethod = typeof (Console).GetMethod("WriteLine", BindingFlags.Public | BindingFlags.Static,
-                null, new[] {StringType}, null);
-            WriteIntLineMethod = typeof (Console).GetMethod("WriteLine", BindingFlags.Public | BindingFlags.Static, null,
-                new[] {IntegerType}, null);
-            WriteStringMethod = typeof (Console).GetMethod("Write", BindingFlags.Public | BindingFlags.Static, null,
-                new[] {StringType}, null);
-            WriteIntMethod = typeof (Console).GetMethod("Write", BindingFlags.Public | BindingFlags.Static, null,
-                new[] {IntegerType}, null);
-            ReadMethod = typeof (Console).GetMethod("ReadLine", BindingFlags.Public | BindingFlags.Static, null,
-                new Type[] {}, null);
+            Errors = new List<CompilerError>();
+
+            WriteStringLineMethod = typeof(Console).GetMethod("WriteLine", BindingFlags.Public | BindingFlags.Static,
+                null, new[] { StringType }, null);
+            WriteIntLineMethod = typeof(Console).GetMethod("WriteLine", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { IntegerType }, null);
+            WriteStringMethod = typeof(Console).GetMethod("Write", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { StringType }, null);
+            WriteIntMethod = typeof(Console).GetMethod("Write", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { IntegerType }, null);
+            ReadMethod = typeof(Console).GetMethod("ReadLine", BindingFlags.Public | BindingFlags.Static, null,
+                new Type[] { }, null);
             IntParseMethod = IntegerType.GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null,
-                new[] {StringType}, null);
+                new[] { StringType }, null);
         }
 
 
-        public void Generate()
+        public void Generate(bool createFile)
         {
             GenerateAssemblyAndModuleBuilders();
             DefineClasses(_programContext);
@@ -73,28 +80,23 @@ namespace CKCompiler.Core
             EmitProgram(_programContext);
             _classBuilders["IO"].CreateType();
 
-            var fileSaveError = false;
+            if (createFile == false) return;
+
             if (File.Exists(_programName + ".exe"))
             {
                 try
                 {
-                    using (new FileStream(_programName + ".exe", FileMode.Create)) {}
+                    using (new FileStream(_programName + ".exe", FileMode.Create)) { }
                     File.Delete(_programName + ".exe");
                 }
                 catch
                 {
-                    fileSaveError = true;
-                    //CompileErrors.Add(new FileInUseError(ProgramName_, CompilerErrors.Count, null, null));
+                    Errors.Add(
+                        new CompilerError(string.Format("Файл: '{0}.exe' открыт в другой программе", _programName)));
                 }
             }
 
-            //if (!fileSaveError && CompilerErrors.Count == 0)
-            //    AssemblyBuilder_.Save(ProgramName_ + ".exe");
-
-            if (!fileSaveError)
-            {
-                _assemblyBuilder.Save(_programName + ".exe");
-            }
+            if (Errors.Count == 0) _assemblyBuilder.Save(_programName + ".exe");
         }
 
         private void DefineAllFieldsAndFunctions(IParseTree rootNode)
@@ -111,7 +113,7 @@ namespace CKCompiler.Core
                 for (int j = 0; j < classBody.ChildCount; j++)
                 {
                     var child = classBody.GetChild(j);
-                    if (child.GetType() == typeof (CKParser.ClassBodyItemContext))
+                    if (child.GetType() == typeof(CKParser.ClassBodyItemContext))
                     {
                         for (int k = 0; k < child.ChildCount; k++)
                         {
@@ -174,7 +176,7 @@ namespace CKCompiler.Core
             if (treeNode.GetChild(2).GetType() == typeof(CKParser.FuncArgsContext))
             {
                 var functionListNode = treeNode.GetChild(2);
-                inputTypes = new Type[functionListNode.ChildCount/2 + 1];
+                inputTypes = new Type[functionListNode.ChildCount / 2 + 1];
                 for (int k = 0, curIndex = 0; k < functionListNode.ChildCount; k++)
                 {
                     if (functionListNode.GetChild(k).GetType() != typeof(CKParser.VarDefTypeContext)) continue;
@@ -259,11 +261,7 @@ namespace CKCompiler.Core
         {
             for (int i = 0; i < rootNode.ChildCount; i++)
             {
-                if (rootNode.GetChild(i).GetType() == typeof(CKParser.ClassDefContext))
-                    EmitClass(rootNode.GetChild(i));
-                //else
-                //    CompilerErrors.Add(new UnexpectedTokenError(CoolGrammarLexer.Class, treeNode.Type, CompilerErrors.Count,
-                //        rootNode.GetChild(i).Line, treeNode.GetChild(i).CharPositionInLine));
+                EmitClass(rootNode.GetChild(i));
             }
 
         }
@@ -275,7 +273,7 @@ namespace CKCompiler.Core
             var parentType = classDefNode.ChildCount == 3
                 ? typeof(object)
                 : _moduleBuilder.GetType(classDefNode.GetChild(3).GetText());
-                
+
             var constructorInfo = parentType.GetConstructor(Type.EmptyTypes);
 
             // генерить поля и функции
@@ -298,7 +296,7 @@ namespace CKCompiler.Core
             for (int i = 0; i < bodyNode.ChildCount; i++)
             {
                 var child = bodyNode.GetChild(i);
-                if (child.GetType() == typeof (CKParser.ClassBodyItemContext))
+                if (child.GetType() == typeof(CKParser.ClassBodyItemContext))
                 {
                     for (int j = 0; j < child.ChildCount; j++)
                     {
@@ -323,7 +321,6 @@ namespace CKCompiler.Core
 
         private void EmitField(IParseTree fieldNode)
         {
-            _returnResult = null; // обнулим return
             _currentIlGenerator = _constructors[_currentTypeBuilder.Name].GetILGenerator();
             LocalObjectDef.InitGenerator(_currentIlGenerator);
 
@@ -333,62 +330,30 @@ namespace CKCompiler.Core
                 : EmitDefaultValue(GetType(field.GetChild(0).GetChild(2).GetChild(0).GetText()));
 
 
-            //if (!_constructors[_currentTypeBuilder.Name].IsStatic)
-            //{
-            //    _currentIlGenerator.Emit(OpCodes.Ldarg_0);
-            //    returnObjectDef.Load();
-            //    _currentIlGenerator.Emit(OpCodes.Stfld,
-            //        _fields[_currentTypeBuilder.Name][field.GetChild(0).GetText()].FieldInfo);
-            //}
-            //else
-            //{
-                returnObjectDef.Load();
-                _currentIlGenerator.Emit(OpCodes.Stsfld,
-                    _fields[_currentTypeBuilder.Name][field.GetChild(0).GetChild(0).GetText()].FieldInfo);
-            //}
+            returnObjectDef.Load();
+            _currentIlGenerator.Emit(OpCodes.Stsfld,
+                _fields[_currentTypeBuilder.Name][field.GetChild(0).GetChild(0).GetText()].FieldInfo);
             returnObjectDef.Remove();
         }
 
         private void EmitFunction(IParseTree functionNode)
         {
-            _returnResult = null; // обнулим return
             var functionName = functionNode.GetChild(0).GetText();
-            var functionReturnType = GetType(functionNode.GetChild(functionNode.ChildCount-2).GetChild(0).GetText());
+            var functionReturnType = GetType(functionNode.GetChild(functionNode.ChildCount - 2).GetChild(0).GetText()); // todo: заюзать
 
             _currentArgs = _functions[_currentTypeBuilder.Name][functionName].Args;
             _currentIlGenerator = _functions[_currentTypeBuilder.Name][functionName].MethodBuilder.GetILGenerator();
             LocalObjectDef.InitGenerator(_currentIlGenerator);
 
-            var returnObjectDef = EmitExpression(functionNode.GetChild(functionNode.ChildCount-1).GetChild(0));
-            // если тело ничего не вернуло, но функция должна была что-то вернуть, то ошибка
-            if (returnObjectDef == null && _functions[_currentTypeBuilder.Name][functionName].MethodBuilder.ReturnType != typeof(void))
-            {
-                throw new Exception(); // todo: ошибка, мол: функция ничего не возвращает, хотя должна
-            }
+            _currentFunction = _functions[_currentTypeBuilder.Name][functionName].MethodBuilder;
 
-            if (returnObjectDef != null) returnObjectDef.Load(); // загрузим на return значение
-
-
-            //if (!functionReturnType.IsAssignableFrom(returnObjectDef.Type))
-            //    //if (!returnObjectDef.Type.IsAssignableFrom(functionReturnType))
-            //    CompilerErrors.Add(new InvalidReturnTypeError(
-            //        Functions_[CurrentTypeBuilder_.Name][functionName].MethodBuilder,
-            //        returnObjectDef.Type,
-            //        CompilerErrors.Count, functionNode.GetChild(2).Line, functionNode.GetChild(2).CharPositionInLine));
-
-            // случай, когда возвращает что-то, хотя не должен
-            if (returnObjectDef != null && _functions[_currentTypeBuilder.Name][functionName].MethodBuilder.ReturnType == typeof(void))
-                _currentIlGenerator.Emit(OpCodes.Pop);
-            _currentIlGenerator.Emit(OpCodes.Ret);
-            if (returnObjectDef != null) returnObjectDef.Remove();
+            EmitExpression(functionNode.GetChild(functionNode.ChildCount - 1).GetChild(0));
+            _currentIlGenerator.Emit(OpCodes.Ret); // на всякий случай
         }
 
         #region EmitExpr
-        private ObjectDef _returnResult;
         private ObjectDef EmitExpression(IParseTree expressionNode)
         {
-            if (_returnResult != null) return _returnResult; // нет смысла продолжать
-
             var nodeType = expressionNode.GetType();
             if (nodeType == typeof(CKParser.BlockContext))
             {
@@ -408,7 +373,7 @@ namespace CKCompiler.Core
                     objectDef.Remove();
                     objectDef.Free();
                 }
-                return _returnResult;
+                return null;
             }
 
             if (nodeType == typeof(CKParser.VarDefContext))
@@ -421,7 +386,7 @@ namespace CKCompiler.Core
                 return EmitExprOperation(expressionNode);
             }
 
-            if (nodeType == typeof (CKParser.ActionContext))
+            if (nodeType == typeof(CKParser.ActionContext))
             {
                 EmitActionOperation(expressionNode);
             }
@@ -444,25 +409,90 @@ namespace CKCompiler.Core
                         var objectDef = EmitExpression(twChild.GetChild(0));
                         if (objectDef != null) objectDef.Remove();
                     }
+                    else if (twChild.Payload is IToken && ((IToken)twChild.Payload).Type == CKParser.RETURN)
+                    {
+                        EmitReturnAction(twChild);
+                    }
                     return;
 
-                case 3: // return EXPR
-                    var typeBlock = (IToken) actionNode.GetChild(0).Payload;
+                case 3:
+                    var typeBlock = (IToken)actionNode.GetChild(0).Payload;
                     switch (typeBlock.Type)
                     {
                         case CKParser.RETURN:
-                            _returnResult = EmitExpression(actionNode.GetChild(1));
+                            EmitReturnAction(actionNode);
                             break;
 
                         case CKParser.WHILE:
                             EmitWhileLoop(actionNode);
                             break;
+
+                        case CKParser.IF:
+                            EmitIfCondition(actionNode.GetChild(1), actionNode.GetChild(2), null);
+                            break;
                     }
                     return;
 
+                case 5:
+                    EmitIfCondition(actionNode.GetChild(1), actionNode.GetChild(2), actionNode.GetChild(4));
+                    break;
+
                 default:
-                    throw new Exception();
+                    throw new Exception(); // нереализованная конструкция
             }
+        }
+
+        private void EmitReturnAction(IParseTree returnNode)
+        {
+            if (returnNode.ChildCount == 2)
+            {
+                if (_currentFunction.ReturnType != VoidType)
+                {
+                    Errors.Add(new ExpectedInputTypeError((IToken) returnNode.GetChild(0).Payload,
+                        _currentFunction.ReturnType));
+                }
+                _currentIlGenerator.Emit(OpCodes.Ret);
+                return;
+            }
+
+            var returnRes = EmitExpression(returnNode.GetChild(1));
+            if (returnRes == null)
+            {
+                Errors.Add(new ExpectedInputTypeError((IToken)returnNode.GetChild(0).Payload,
+                        _currentFunction.ReturnType));
+            }
+            else
+            {
+                returnRes.Load();
+                returnRes.Remove();
+            }
+            _currentIlGenerator.Emit(OpCodes.Ret);
+        }
+
+        private void EmitIfCondition(IParseTree conditionNode, IParseTree actionNode, IParseTree elseNode)
+        {
+            var checkObjectDef = EmitExpression(conditionNode);
+            checkObjectDef.Load();
+            checkObjectDef.Remove();
+
+            if (checkObjectDef.Type != BoolType)
+                Errors.Add(new ExpectedInputTypeError((IToken) conditionNode.Parent.GetChild(0).Payload, BoolType));
+
+            var exitLabel = _currentIlGenerator.DefineLabel();
+            var elseLabel = _currentIlGenerator.DefineLabel();
+
+            _currentIlGenerator.Emit(OpCodes.Brfalse, elseNode != null ? elseLabel : exitLabel);
+
+            EmitExpression(actionNode);
+            _currentIlGenerator.Emit(OpCodes.Br, exitLabel);
+
+            if (elseNode != null)
+            {
+                _currentIlGenerator.MarkLabel(elseLabel);
+                EmitExpression(elseNode);
+            }
+            
+            _currentIlGenerator.MarkLabel(exitLabel);
         }
 
         private void EmitWhileLoop(IParseTree whileNode)
@@ -473,9 +503,8 @@ namespace CKCompiler.Core
             var checkObjectDef = EmitExpression(whileNode.GetChild(1));
             checkObjectDef.Load();
 
-            //if (checkObjectDef.Type != BoolType)
-            //    CompilerErrors.Add(new WhileOperatorError(checkObjectDef.Type, CompilerErrors.Count,
-            //        expressionNode.GetChild(0).Line, expressionNode.GetChild(0).CharPositionInLine));
+            if (checkObjectDef.Type != BoolType)
+                Errors.Add(new ExpectedInputTypeError((IToken)whileNode.GetChild(0).Payload, BoolType));
 
             var exitLabel = _currentIlGenerator.DefineLabel();
             _currentIlGenerator.Emit(OpCodes.Brfalse, exitLabel);
@@ -504,14 +533,13 @@ namespace CKCompiler.Core
             ObjectDef result;
             if (!_functions.ContainsKey(invokeObjectName) || !_functions[invokeObjectName].ContainsKey(functionName))
             {
-                //CompilerErrors.Add(new UndefinedFunctionError(functionName, invokeObjectName,
-                //    CompilerErrors.Count, functionNode.Line, functionNode.CharPositionInLine));
+                Errors.Add(new UndefinedFunctionError((IToken) functionNode.GetChild(2).Payload));
                 result = LocalObjectDef.AllocateLocal(typeof(object));
             }
             else
             {
                 var methodBuilder = _functions[invokeObjectName][functionName].MethodBuilder;
-                var args = new List<ObjectDef> {invokeObjectDef};
+                var args = new List<ObjectDef> { invokeObjectDef };
 
                 // грузим аргументы
                 if (argsExprNode != null)
@@ -523,15 +551,11 @@ namespace CKCompiler.Core
                     }
 
                     var args2 = _functions[invokeObjectDef.Type.Name][functionName].Args.Select(arg => arg.Value).ToList();
-                    //if (!CheckTypes(args, args2))
-                    //{
-                    //    var args2types = new List<Type>();
-                    //    foreach (var arg in args2)
-                    //        args2types.Add(arg.Type);
-                    //    //CompilerErrors.Add(new FunctionArgumentsError(functionName, args2types,
-                    //    //    CompilerErrors.Count, functionNode.Line, functionNode.CharPositionInLine));
-                    //    throw new Exception();
-                    //}
+                    if (!CheckTypes(args, args2))
+                    {
+                        var args2Types = args2.Select(arg => arg.Type).ToList();
+                        Errors.Add(new FunctionArgumentsError((IToken) functionNode.GetChild(2).Payload, args2Types));
+                    }
                 }
 
                 foreach (var arg in args)
@@ -570,7 +594,7 @@ namespace CKCompiler.Core
                 case 2:
                     return EmitObjectCreation(expressionNode.GetChild(1));
                 case 3:
-                    var operand = (IToken) expressionNode.GetChild(1).Payload;
+                    var operand = (IToken)expressionNode.GetChild(1).Payload;
                     switch (operand.Type)
                     {
                         case CKParser.MULT:
@@ -581,6 +605,8 @@ namespace CKCompiler.Core
 
                         case CKParser.LT:
                         case CKParser.GT:
+                        case CKParser.GE:
+                        case CKParser.LE:
                             return EmitComparsionOperation(expressionNode);
 
                         case CKParser.EQUAL:
@@ -607,19 +633,19 @@ namespace CKCompiler.Core
 
         private ObjectDef EmitComparsionOperation(IParseTree compNode)
         {
-            var returnObject2 = EmitExpression(compNode.GetChild(2));
             var returnObject1 = EmitExpression(compNode.GetChild(0));
+            var returnObject2 = EmitExpression(compNode.GetChild(2));
 
-            //if (returnObject1.Type != IntegerType || returnObject1.Type != returnObject2.Type)
-            //    CompilerErrors.Add(new ComparsionOperatorError(returnObject1.Type, returnObject2.Type,
-            //        CompilerErrors.Count, expressionNode.Line, expressionNode.GetChild(0).CharPositionInLine,
-            //        expressionNode.GetChild(1).CharPositionInLine));
-            //else
+            if (returnObject1.Type != IntegerType && returnObject1.Type != FloatType ||
+                returnObject2.Type != IntegerType && returnObject2.Type != FloatType)
+                Errors.Add(new OperationTypeError((IToken) compNode.GetChild(1).Payload, returnObject1.Type,
+                    returnObject2.Type));
+            else
             {
                 returnObject1.Load();
                 returnObject2.Load();
 
-                var compOperator = (IToken) compNode.GetChild(1).Payload;
+                var compOperator = (IToken)compNode.GetChild(1).Payload;
                 switch (compOperator.Type)
                 {
                     case CKParser.LT:
@@ -658,11 +684,12 @@ namespace CKCompiler.Core
             var returnObject1 = EmitExpression(equalNode.GetChild(0));
             var returnObject2 = EmitExpression(equalNode.GetChild(2));
 
-            //if (returnObject1.Type != returnObject2.Type)
-            //    CompilerErrors.Add(new ComparsionOperatorError(returnObject1.Type, returnObject2.Type,
-            //        CompilerErrors.Count, expressionNode.Line, expressionNode.GetChild(0).CharPositionInLine,
-            //        expressionNode.GetChild(1).CharPositionInLine));
-            //else
+            if (returnObject1.Type != IntegerType && returnObject1.Type != FloatType ||
+                returnObject2.Type != IntegerType && returnObject2.Type != FloatType ||
+                returnObject1.Type != returnObject2.Type)
+                Errors.Add(new OperationTypeError((IToken)equalNode.GetChild(1).Payload, returnObject1.Type,
+                    returnObject2.Type));
+            else
             {
                 returnObject1.Load();
                 returnObject2.Load();
@@ -688,7 +715,7 @@ namespace CKCompiler.Core
             }
             else if (id is FieldObjectDef)
             {
-                var idName = (FieldObjectDef) id;
+                var idName = (FieldObjectDef)id;
                 _currentIlGenerator.Emit(OpCodes.Stsfld, idName.FieldInfo);
             }
 
@@ -724,16 +751,12 @@ namespace CKCompiler.Core
             var objectName = classNewNode.GetText();
             if (!_classBuilders.ContainsKey(objectName))
             {
-                //CompilerErrors.Add(new UndefinedClassError(objectName, CompilerErrors.Count, expressionNode.Line,
-                //    expressionNode.CharPositionInLine));
-                throw new Exception();
+                Errors.Add(new UndefinedClassError((IToken) classNewNode.Payload));
                 result = new ValueObjectDef(typeof(object), null);
             }
             else
             {
                 var returnType = _classBuilders[objectName];
-
-                //_currentIlGenerator.Emit(OpCodes.Newobj, _constructors[objectName]);
                 result = new ValueObjectDef(returnType, null, _constructors[objectName]);
             }
 
@@ -750,19 +773,16 @@ namespace CKCompiler.Core
             var returnObject1 = EmitExpression(expressionNode.GetChild(0));
             var returnObject2 = EmitExpression(expressionNode.GetChild(2));
 
-            if (returnObject1.Type != IntegerType && returnObject1.Type != FloatType || returnObject2.Type != IntegerType && returnObject2.Type != FloatType)
-                //CompilerErrors.Add(new ArithmeticOperatorError(
-                //    returnObject1.Type, returnObject2.Type,
-                //    CompilerErrors.Count, expressionNode.Line,
-                //    expressionNode.GetChild(1).CharPositionInLine,
-                //    expressionNode.GetChild(0).CharPositionInLine));
-                throw new InvalidOperationException();
+            if (returnObject1.Type != IntegerType && returnObject1.Type != FloatType ||
+                returnObject2.Type != IntegerType && returnObject2.Type != FloatType)
+                Errors.Add(new OperationTypeError((IToken) expressionNode.GetChild(1).Payload, returnObject1.Type,
+                    returnObject2.Type));
             else
             {
                 returnObject1.Load();
                 returnObject2.Load();
 
-                var exprOperandToken = (IToken) expressionNode.GetChild(1).Payload;
+                var exprOperandToken = (IToken)expressionNode.GetChild(1).Payload;
                 if (exprOperandToken.Type == CKParser.PLUS)
                     _currentIlGenerator.Emit(OpCodes.Add);
                 else if (exprOperandToken.Type == CKParser.MINUS)
@@ -785,7 +805,7 @@ namespace CKCompiler.Core
             {
                 case 1:
                     var childNode = primaryNode.GetChild(0);
-                    return childNode.GetType() == typeof (CKParser.LiteralContext)
+                    return childNode.GetType() == typeof(CKParser.LiteralContext)
                         ? EmitLiteral(childNode.GetChild(0))
                         : EmitIdentificator(childNode);
 
@@ -810,17 +830,15 @@ namespace CKCompiler.Core
                 return _currentArgs[idValue];
             if (_fields[_currentTypeBuilder.Name].ContainsKey(idValue))
                 return _fields[_currentTypeBuilder.Name][idValue];
-            
-            
-            //CompilerErrors.Add(new UndefinedIdError(idValue, CompilerErrors.Count,
-            //    expressionNode.Line, expressionNode.CharPositionInLine));
-            throw new Exception();
+
+
+            Errors.Add(new UndefinedIdError((IToken) idNode.Payload));
             return new ValueObjectDef(typeof(object), null);
         }
 
         private ObjectDef EmitLiteral(IParseTree literalNode)
         {
-            var token = (IToken) literalNode.Payload;
+            var token = (IToken)literalNode.Payload;
             switch (token.Type)
             {
                 case CKParser.INTEGER:
@@ -829,12 +847,20 @@ namespace CKCompiler.Core
                     return EmitFloat(token);
                 case CKParser.STRING:
                     return EmitString(token);
+                case CKParser.CHAR:
+                    return EmitChar(token);
                 case CKParser.TRUE:
                 case CKParser.FALSE:
                     return EmitBoolean(token);
                 default:
-                    throw new Exception();
+                    throw new Exception(); // не реализовано
             }
+        }
+
+        private ObjectDef EmitChar(IToken charToken)
+        {
+            var result = new ValueObjectDef(CharType, char.Parse(charToken.Text.Replace("\'", "")));
+            return result;
         }
 
         private ObjectDef EmitString(IToken strToken)
@@ -871,7 +897,7 @@ namespace CKCompiler.Core
         private ObjectDef EmitVarOperation(IParseTree expressionNode)
         {
             var localObjectDefs = new List<ObjectDef>();
-            
+
             var varDefBody = expressionNode.GetChild(1);
             var localOrFieldInitNode = varDefBody.GetChild(0);
             var type = GetType(localOrFieldInitNode.GetChild(2).GetChild(0).GetText());
@@ -886,7 +912,8 @@ namespace CKCompiler.Core
 
             var localObjectDef = LocalObjectDef.AllocateLocal(type, localOrFieldInitNode.GetChild(0).GetText());
             localObjectDefs.Add(localObjectDef);
-            
+
+            // todo: var переменные через запятую
             //for (int i = 0; i < expressionNode.GetChild(0).ChildCount; i++)
             //{
             //    var localOrFieldInitNode = expressionNode.GetChild(0).GetChild(i);
@@ -903,22 +930,15 @@ namespace CKCompiler.Core
             //    localObjectDefs.Add(localObjectDef);
             //}
 
-            //var returnObjectDef = EmitExpression(expressionNode.GetChild(1));
-
-            // bug с видимостью переменных
-            //foreach (var localObjectDefine in localObjectDefs)
-            //    localObjectDefine.Free();
-
-            //return returnObjectDef;
             return localObjectDef;
         }
-        
+
         #endregion
 
         private void DefineDefaultClasses()
         {
             var functionList = new Dictionary<string, MethodDef>();
-            
+
             _classBuilders.Add("IO", _moduleBuilder.DefineType("IO", TypeAttributes.Public, typeof(object)));
             var classBuilder = _classBuilders["IO"];
 
@@ -1010,7 +1030,7 @@ namespace CKCompiler.Core
 
         private void GenerateAssemblyAndModuleBuilders()
         {
-            _assemblyName = new AssemblyName {Name = _programName};
+            _assemblyName = new AssemblyName { Name = _programName };
             _assemblyBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(_assemblyName, AssemblyBuilderAccess.Save);
             _moduleBuilder = _assemblyBuilder.DefineDynamicModule(_programName, _programName + ".exe", false);
         }
@@ -1023,12 +1043,14 @@ namespace CKCompiler.Core
                     return IntegerType;
                 case "bool":
                     return BoolType;
+                case "char":
+                    return CharType;
                 case "string":
                     return StringType;
                 case "float":
                     return FloatType;
-                case "object":
-                    return typeof(object);
+                case "void":
+                    return VoidType;
                 default:
                     return _moduleBuilder.GetType(typeName);
             }
@@ -1048,6 +1070,21 @@ namespace CKCompiler.Core
 
             var result = new ValueObjectDef(type, value);
             return result;
+        }
+
+        private bool CheckTypes(List<ObjectDef> args1, List<ArgObjectDef> args2)
+        {
+            if (args1.Count != args2.Count)
+                return false;
+
+            for (int i = 0; i < args1.Count; i++)
+            {
+                var tempType = args1[i].Type;
+                if (tempType.IsAssignableFrom(args2[i].Type)) continue;
+                if (tempType.BaseType == null) return false;
+                if (tempType.BaseType.Name != args2[i].Type.Name) return false;
+            }
+            return true;
         }
     }
 }
