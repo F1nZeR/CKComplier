@@ -1,0 +1,32 @@
+class Program
+{
+	Main():void
+	{
+		var io:IO = new IO;
+		var fibo:Fibo = new Fibo;
+		io.WriteString("Введите число: ");
+		var num:int = io.ReadInt();
+		io.WriteString("Фибоначчи: ");
+		io.WriteInt(fibo.GetFibo(num));
+	}
+}
+
+class Fibo
+{
+	GetFibo(n:int):int
+	{
+		if (n <= 2) return 1;
+		var x:int = 1;
+		var y:int = 1;
+		var ans:int = 0;
+		var i:int = 3;
+		while (i <= n)
+		{
+			ans = x + y;
+			x = y;
+			y = ans;
+			i = i + 1;
+		}
+		return ans;
+	}
+}

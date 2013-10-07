@@ -684,8 +684,8 @@ namespace CKCompiler.Core
             var returnObject1 = EmitExpression(equalNode.GetChild(0));
             var returnObject2 = EmitExpression(equalNode.GetChild(2));
 
-            if (returnObject1.Type != IntegerType && returnObject1.Type != FloatType ||
-                returnObject2.Type != IntegerType && returnObject2.Type != FloatType ||
+            if ((returnObject1.Type != IntegerType && returnObject1.Type != FloatType ||
+                returnObject2.Type != IntegerType && returnObject2.Type != FloatType) &&
                 returnObject1.Type != returnObject2.Type)
                 Errors.Add(new OperationTypeError((IToken)equalNode.GetChild(1).Payload, returnObject1.Type,
                     returnObject2.Type));

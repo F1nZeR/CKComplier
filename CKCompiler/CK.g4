@@ -133,7 +133,7 @@ StringCharacter
 fragment LETTER : ('a'..'z' | 'A'..'Z') ;
 fragment DIGIT : '0'..'9';
 INTEGER : DIGIT+ ;
-CHAR : '\'' LETTER '\'';
+CHAR : '\'' . '\'';
 FLOAT : DIGIT+ '.' DIGIT+;
 ID : LETTER (LETTER | DIGIT | '_')*;
 WS  :  [ \t\r\n\u000C]+ -> skip;

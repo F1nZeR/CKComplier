@@ -4,23 +4,42 @@ class Math
 	{
 		return a+b;
 	}
-}
-
-class MathExt : Math
-{
+	
 	Minus(a:int, b:int):int
 	{
 		return a-b;
 	}
 }
 
+class MathExt : Math
+{
+	Mult(a:int, b:int):int
+	{
+		return a*b;
+	}
+	
+	Div(a:int, b:int):int
+	{
+		return a/b;
+	}
+}
+
 class Program
 {
-	Main():int
+	Main():void
 	{
 		var ma:MathExt = new MathExt;
-		var result:int = ma.Plus(2, 4);
-		
-		return 0;
+		var io:IO = new IO;
+		io.WriteLineString("Введите два числа");
+		var a:int = io.ReadInt();
+		var b:int = io.ReadInt();
+		io.WriteString("Сумма: ");
+		io.WriteLineInt(ma.Plus(a,b));
+		io.WriteString("Разность: ");
+		io.WriteLineInt(ma.Minus(a,b));
+		io.WriteString("Умножение: ");
+		io.WriteLineInt(ma.Mult(a,b));
+		io.WriteString("Деление: ");
+		io.WriteLineInt(ma.Div(a,b));
 	}
 }
