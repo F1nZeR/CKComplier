@@ -47,6 +47,7 @@ namespace CKCompiler
                                           _compileTimer.IsEnabled = true;
                                           _compileTimer.Start();
                                       };
+            TextEditor.Text = "class Program\n{\n\tMain():void\n\t{\n\t\t\n\t}\n}";
         }
 
         private void FileOpenExecuted(object sender, ExecutedRoutedEventArgs e)

@@ -10,8 +10,8 @@ namespace CKCompiler.Core.ObjectDefs
 {
     public class ValueObjectDef : ObjectDef
     {
-        readonly object _value;
-        readonly ConstructorBuilder _builder;
+        private readonly object _value;
+        private readonly ConstructorBuilder _builder;
 
         public ValueObjectDef(Type type, object value, ConstructorBuilder builder = null)
             : base(type)
@@ -56,6 +56,11 @@ namespace CKCompiler.Core.ObjectDefs
 
         public override void Free()
         {
+        }
+
+        public object GetValue()
+        {
+            return _value;
         }
     }
 }

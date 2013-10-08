@@ -78,6 +78,7 @@
     <Compile Include="Core\Errors\FunctionArgumentsError.cs" />
     <Compile Include="Core\Errors\UndefinedFunctionError.cs" />
     <Compile Include="Core\Errors\ExpectedInputTypeError.cs" />
+    <Compile Include="Core\MsCoreClasses.cs" />
     <Compile Include="Core\ObjectDefs\ArgObjectDef.cs" />
     <Compile Include="Core\ObjectDefs\enmObjectScope.cs" />
     <Compile Include="Core\ObjectDefs\FieldObjectDef.cs" />
@@ -85,6 +86,7 @@
     <Compile Include="Core\ObjectDefs\MethodDef.cs" />
     <Compile Include="Core\ObjectDefs\ObjectDef.cs" />
     <Compile Include="Core\ObjectDefs\ValueObjectDef.cs" />
+    <Compile Include="Core\OptimizationGen.cs" />
     <Compile Include="GUI\MyCommands.cs" />
     <Compile Include="GUI\LineColorizer.cs" />
     <Compile Include="Tokens\LangTokens.cs" />

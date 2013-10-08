@@ -22,16 +22,10 @@ namespace CKCompiler.Core
         private AssemblyName _assemblyName;
         private AssemblyBuilder _assemblyBuilder;
         private ModuleBuilder _moduleBuilder;
+        private OptimizationGen _optimizationGen;
 
         private TypeBuilder _currentTypeBuilder;
         private ILGenerator _currentIlGenerator;
-
-        protected MethodInfo WriteStringLineMethod,
-            WriteIntLineMethod,
-            WriteStringMethod,
-            WriteIntMethod,
-            ReadMethod,
-            IntParseMethod;
 
         private Dictionary<string, TypeBuilder> _classBuilders;
         private Dictionary<string, Dictionary<string, FieldObjectDef>> _fields;
@@ -56,19 +50,7 @@ namespace CKCompiler.Core
             _programName = programName;
 
             Errors = new List<CompilerError>();
-
-            WriteStringLineMethod = typeof(Console).GetMethod("WriteLine", BindingFlags.Public | BindingFlags.Static,
-                null, new[] { StringType }, null);
-            WriteIntLineMethod = typeof(Console).GetMethod("WriteLine", BindingFlags.Public | BindingFlags.Static, null,
-                new[] { IntegerType }, null);
-            WriteStringMethod = typeof(Console).GetMethod("Write", BindingFlags.Public | BindingFlags.Static, null,
-                new[] { StringType }, null);
-            WriteIntMethod = typeof(Console).GetMethod("Write", BindingFlags.Public | BindingFlags.Static, null,
-                new[] { IntegerType }, null);
-            ReadMethod = typeof(Console).GetMethod("ReadLine", BindingFlags.Public | BindingFlags.Static, null,
-                new Type[] { }, null);
-            IntParseMethod = IntegerType.GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null,
-                new[] { StringType }, null);
+            _optimizationGen = new OptimizationGen();
         }
 
 
@@ -249,7 +231,10 @@ namespace CKCompiler.Core
 
                 _classBuilders.Add(className, classBuilder);
             }
-            DefineDefaultClasses();
+
+            // генерим стандартные классы
+            var defClasses = new MsCoreClasses(_classBuilders, _moduleBuilder, _constructors, _functions);
+            defClasses.DefineDefaultClasses();
         }
 
         private void EmitProgram(IParseTree rootNode)
@@ -263,7 +248,6 @@ namespace CKCompiler.Core
             {
                 EmitClass(rootNode.GetChild(i));
             }
-
         }
 
         private void EmitClass(IParseTree classDefNode)
@@ -448,7 +432,7 @@ namespace CKCompiler.Core
             {
                 if (_currentFunction.ReturnType != VoidType)
                 {
-                    Errors.Add(new ExpectedInputTypeError((IToken) returnNode.GetChild(0).Payload,
+                    Errors.Add(new ExpectedInputTypeError((IToken)returnNode.GetChild(0).Payload,
                         _currentFunction.ReturnType));
                 }
                 _currentIlGenerator.Emit(OpCodes.Ret);
@@ -476,7 +460,7 @@ namespace CKCompiler.Core
             checkObjectDef.Remove();
 
             if (checkObjectDef.Type != BoolType)
-                Errors.Add(new ExpectedInputTypeError((IToken) conditionNode.Parent.GetChild(0).Payload, BoolType));
+                Errors.Add(new ExpectedInputTypeError((IToken)conditionNode.Parent.GetChild(0).Payload, BoolType));
 
             var exitLabel = _currentIlGenerator.DefineLabel();
             var elseLabel = _currentIlGenerator.DefineLabel();
@@ -491,7 +475,7 @@ namespace CKCompiler.Core
                 _currentIlGenerator.MarkLabel(elseLabel);
                 EmitExpression(elseNode);
             }
-            
+
             _currentIlGenerator.MarkLabel(exitLabel);
         }
 
@@ -533,7 +517,7 @@ namespace CKCompiler.Core
             ObjectDef result;
             if (!_functions.ContainsKey(invokeObjectName) || !_functions[invokeObjectName].ContainsKey(functionName))
             {
-                Errors.Add(new UndefinedFunctionError((IToken) functionNode.GetChild(2).Payload));
+                Errors.Add(new UndefinedFunctionError((IToken)functionNode.GetChild(2).Payload));
                 result = LocalObjectDef.AllocateLocal(typeof(object));
             }
             else
@@ -554,7 +538,7 @@ namespace CKCompiler.Core
                     if (!CheckTypes(args, args2))
                     {
                         var args2Types = args2.Select(arg => arg.Type).ToList();
-                        Errors.Add(new FunctionArgumentsError((IToken) functionNode.GetChild(2).Payload, args2Types));
+                        Errors.Add(new FunctionArgumentsError((IToken)functionNode.GetChild(2).Payload, args2Types));
                     }
                 }
 
@@ -638,38 +622,47 @@ namespace CKCompiler.Core
 
             if (returnObject1.Type != IntegerType && returnObject1.Type != FloatType ||
                 returnObject2.Type != IntegerType && returnObject2.Type != FloatType)
-                Errors.Add(new OperationTypeError((IToken) compNode.GetChild(1).Payload, returnObject1.Type,
+                Errors.Add(new OperationTypeError((IToken)compNode.GetChild(1).Payload, returnObject1.Type,
                     returnObject2.Type));
             else
             {
-                returnObject1.Load();
-                returnObject2.Load();
-
                 var compOperator = (IToken)compNode.GetChild(1).Payload;
-                switch (compOperator.Type)
+
+                // оптимизация: если и левый кусок и правый - константы
+                if (returnObject1.GetType() == returnObject2.GetType() &&
+                    returnObject1.GetType() == typeof(ValueObjectDef))
                 {
-                    case CKParser.LT:
-                        _currentIlGenerator.Emit(OpCodes.Clt);
-                        break;
+                    var newValue = _optimizationGen.GetComparasionConstValue(returnObject1, returnObject2, compOperator);
+                    newValue.Load();
+                    newValue.Remove();
+                }
+                else
+                {
+                    returnObject1.Load();
+                    returnObject2.Load();
 
-                    case CKParser.LE:
-                        _currentIlGenerator.Emit(OpCodes.Cgt);
-                        _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
-                        _currentIlGenerator.Emit(OpCodes.Ceq);
-                        break;
+                    switch (compOperator.Type)
+                    {
+                        case CKParser.LT:
+                            _currentIlGenerator.Emit(OpCodes.Clt);
+                            break;
 
-                    case CKParser.GT:
-                        _currentIlGenerator.Emit(OpCodes.Cgt);
-                        break;
+                        case CKParser.LE:
+                            _currentIlGenerator.Emit(OpCodes.Cgt);
+                            _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
+                            _currentIlGenerator.Emit(OpCodes.Ceq);
+                            break;
 
-                    case CKParser.GE:
-                        _currentIlGenerator.Emit(OpCodes.Clt);
-                        _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
-                        _currentIlGenerator.Emit(OpCodes.Ceq);
-                        break;
+                        case CKParser.GT:
+                            _currentIlGenerator.Emit(OpCodes.Cgt);
+                            break;
 
-                    default:
-                        return null;
+                        case CKParser.GE:
+                            _currentIlGenerator.Emit(OpCodes.Clt);
+                            _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
+                            _currentIlGenerator.Emit(OpCodes.Ceq);
+                            break;
+                    }
                 }
 
                 returnObject1.Remove();
@@ -691,10 +684,32 @@ namespace CKCompiler.Core
                     returnObject2.Type));
             else
             {
-                returnObject1.Load();
-                returnObject2.Load();
+                // оптимизация: если и левый кусок и правый - константы
+                if (returnObject1.GetType() == returnObject2.GetType() &&
+                    returnObject1.GetType() == typeof(ValueObjectDef))
+                {
+                    var newValue = _optimizationGen.GetEqualityConstValue(returnObject1, returnObject2);
+                    newValue.Load();
+                    newValue.Remove();
+                }
+                else
+                {
+                    returnObject1.Load();
+                    returnObject2.Load();
 
-                _currentIlGenerator.Emit(OpCodes.Ceq);
+                    if (returnObject1.Type != StringType)
+                    {
+                        _currentIlGenerator.Emit(OpCodes.Ceq);
+                    }
+                    else // случай со строками
+                    {
+                        var method = typeof(String).GetMethod("op_Equality", BindingFlags.Public | BindingFlags.Static,
+                            null, new[] { StringType, StringType }, null);
+                        _currentIlGenerator.EmitCall(OpCodes.Call, method, null);
+                        _currentIlGenerator.Emit(OpCodes.Ldc_I4_1);
+                        _currentIlGenerator.Emit(OpCodes.Ceq);
+                    }
+                }
 
                 returnObject1.Remove();
                 returnObject2.Remove();
@@ -751,7 +766,7 @@ namespace CKCompiler.Core
             var objectName = classNewNode.GetText();
             if (!_classBuilders.ContainsKey(objectName))
             {
-                Errors.Add(new UndefinedClassError((IToken) classNewNode.Payload));
+                Errors.Add(new UndefinedClassError((IToken)classNewNode.Payload));
                 result = new ValueObjectDef(typeof(object), null);
             }
             else
@@ -772,25 +787,53 @@ namespace CKCompiler.Core
         {
             var returnObject1 = EmitExpression(expressionNode.GetChild(0));
             var returnObject2 = EmitExpression(expressionNode.GetChild(2));
+            var exprOperandToken = (IToken)expressionNode.GetChild(1).Payload;
 
-            if (returnObject1.Type != IntegerType && returnObject1.Type != FloatType ||
-                returnObject2.Type != IntegerType && returnObject2.Type != FloatType)
-                Errors.Add(new OperationTypeError((IToken) expressionNode.GetChild(1).Payload, returnObject1.Type,
+            if (returnObject1.Type != returnObject2.Type &&
+                ((returnObject1.Type != FloatType && returnObject2.Type != IntegerType) || 
+                (returnObject1.Type != IntegerType && returnObject2.Type != FloatType) ||
+                returnObject1.Type == StringType && returnObject2.Type == StringType && exprOperandToken.Type != CKParser.PLUS))
+                Errors.Add(new OperationTypeError((IToken)expressionNode.GetChild(1).Payload, returnObject1.Type,
                     returnObject2.Type));
             else
             {
-                returnObject1.Load();
-                returnObject2.Load();
+                // оптимизация: если и левый кусок и правый - константы
+                if (returnObject1.GetType() == returnObject2.GetType() &&
+                    returnObject1.GetType() == typeof (ValueObjectDef))
+                {
+                    var retValue = _optimizationGen.GetArithmeticConstValue(returnObject1, returnObject2,
+                        exprOperandToken);
+                    retValue.Load();
+                    retValue.Remove();
+                }
+                else
+                {
+                    returnObject1.Load();
+                    returnObject2.Load();
 
-                var exprOperandToken = (IToken)expressionNode.GetChild(1).Payload;
-                if (exprOperandToken.Type == CKParser.PLUS)
-                    _currentIlGenerator.Emit(OpCodes.Add);
-                else if (exprOperandToken.Type == CKParser.MINUS)
-                    _currentIlGenerator.Emit(OpCodes.Sub);
-                else if (exprOperandToken.Type == CKParser.MULT)
-                    _currentIlGenerator.Emit(OpCodes.Mul);
-                else if (exprOperandToken.Type == CKParser.DIV)
-                    _currentIlGenerator.Emit(OpCodes.Div);
+                    switch (exprOperandToken.Type)
+                    {
+                        case CKParser.PLUS:
+                            if (returnObject1.Type == returnObject2.Type && returnObject1.Type == StringType)
+                            {
+                                var method = typeof (String).GetMethod("Concat",
+                                    BindingFlags.Public | BindingFlags.Static,
+                                    null, new[] {StringType, StringType}, null);
+                                _currentIlGenerator.EmitCall(OpCodes.Call, method, null);
+                            }
+                            else _currentIlGenerator.Emit(OpCodes.Add);
+                            break;
+                        case CKParser.MINUS:
+                            _currentIlGenerator.Emit(OpCodes.Sub);
+                            break;
+                        case CKParser.MULT:
+                            _currentIlGenerator.Emit(OpCodes.Mul);
+                            break;
+                        case CKParser.DIV:
+                            _currentIlGenerator.Emit(OpCodes.Div);
+                            break;
+                    }
+                }
 
                 returnObject1.Remove();
                 returnObject2.Remove();
@@ -832,7 +875,7 @@ namespace CKCompiler.Core
                 return _fields[_currentTypeBuilder.Name][idValue];
 
 
-            Errors.Add(new UndefinedIdError((IToken) idNode.Payload));
+            Errors.Add(new UndefinedIdError((IToken)idNode.Payload));
             return new ValueObjectDef(typeof(object), null);
         }
 
@@ -934,98 +977,6 @@ namespace CKCompiler.Core
         }
 
         #endregion
-
-        private void DefineDefaultClasses()
-        {
-            var functionList = new Dictionary<string, MethodDef>();
-
-            _classBuilders.Add("IO", _moduleBuilder.DefineType("IO", TypeAttributes.Public, typeof(object)));
-            var classBuilder = _classBuilders["IO"];
-
-            var outStringBuilder = classBuilder.DefineMethod("WriteString", MethodAttributes.Public, CallingConventions.Standard,
-                classBuilder, new Type[] { StringType });
-            var ilGenerator = outStringBuilder.GetILGenerator();
-            ilGenerator.Emit(OpCodes.Ldarg_1);
-            ilGenerator.Emit(OpCodes.Call, WriteStringMethod);
-            ilGenerator.Emit(OpCodes.Ldarg_0);
-            ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("WriteString", new MethodDef("WriteString",
-                new Dictionary<string, ArgObjectDef>() 
-				{
-					{ "this", new ArgObjectDef(classBuilder, 0, "this") }, 
-					{ "x", new ArgObjectDef(StringType, 1, "x") }
-				}, outStringBuilder));
-
-            var outStringLineBuilder = classBuilder.DefineMethod("WriteLineString", MethodAttributes.Public, CallingConventions.Standard,
-                classBuilder, new Type[] { StringType });
-            ilGenerator = outStringLineBuilder.GetILGenerator();
-            ilGenerator.Emit(OpCodes.Ldarg_1);
-            ilGenerator.Emit(OpCodes.Call, WriteStringLineMethod);
-            ilGenerator.Emit(OpCodes.Ldarg_0);
-            ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("WriteLineString", new MethodDef("WriteLineString",
-                new Dictionary<string, ArgObjectDef>() 
-				{
-					{ "this", new ArgObjectDef(classBuilder, 0, "this") }, 
-					{ "x", new ArgObjectDef(StringType, 1, "x") }
-				}, outStringLineBuilder));
-
-            var outIntBuilder = classBuilder.DefineMethod("WriteInt", MethodAttributes.Public, CallingConventions.Standard,
-                classBuilder, new Type[] { IntegerType });
-            ilGenerator = outIntBuilder.GetILGenerator();
-            ilGenerator.Emit(OpCodes.Ldarg_1);
-            ilGenerator.Emit(OpCodes.Call, WriteIntMethod);
-            ilGenerator.Emit(OpCodes.Ldarg_0);
-            ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("WriteInt", new MethodDef("WriteInt",
-                new Dictionary<string, ArgObjectDef>() 
-				{
-					{ "this", new ArgObjectDef(classBuilder, 0, "this") }, 
-					{ "x", new ArgObjectDef(IntegerType, 1, "x") }
-				}, outIntBuilder));
-
-            var outIneLineBuilder = classBuilder.DefineMethod("WriteLineInt", MethodAttributes.Public, CallingConventions.Standard,
-                classBuilder, new Type[] { IntegerType });
-            ilGenerator = outIneLineBuilder.GetILGenerator();
-            ilGenerator.Emit(OpCodes.Ldarg_1);
-            ilGenerator.Emit(OpCodes.Call, WriteIntLineMethod);
-            ilGenerator.Emit(OpCodes.Ldarg_0);
-            ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("WriteLineInt", new MethodDef("WriteLineInt",
-                new Dictionary<string, ArgObjectDef>() 
-				{
-					{ "this", new ArgObjectDef(classBuilder, 0, "this") }, 
-					{ "x", new ArgObjectDef(IntegerType, 1, "x") }
-				}, outIneLineBuilder));
-
-            var inStringBuilder = classBuilder.DefineMethod("ReadString", MethodAttributes.Public, CallingConventions.Standard,
-                classBuilder, Type.EmptyTypes);
-            ilGenerator = inStringBuilder.GetILGenerator();
-            ilGenerator.Emit(OpCodes.Call, ReadMethod);
-            ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("ReadString", new MethodDef("ReadString",
-                new Dictionary<string, ArgObjectDef>() 
-				{
-					{ "this", new ArgObjectDef(classBuilder, 0, "this") }
-				}, inStringBuilder));
-
-            var inIntBuilder = classBuilder.DefineMethod("ReadInt", MethodAttributes.Public, CallingConventions.Standard,
-                classBuilder, Type.EmptyTypes);
-            ilGenerator = inIntBuilder.GetILGenerator();
-            ilGenerator.Emit(OpCodes.Call, ReadMethod);
-            ilGenerator.Emit(OpCodes.Call, IntParseMethod);
-            ilGenerator.Emit(OpCodes.Ret);
-            functionList.Add("ReadInt", new MethodDef("ReadInt",
-                new Dictionary<string, ArgObjectDef>() 
-				{
-					{ "this", new ArgObjectDef(classBuilder, 0, "this") }
-				}, inIntBuilder));
-
-            var constructorBuilder = classBuilder.DefineDefaultConstructor(MethodAttributes.Public);
-            _constructors.Add("IO", constructorBuilder);
-
-            _functions.Add("IO", functionList);
-        }
 
 
         private void GenerateAssemblyAndModuleBuilders()
