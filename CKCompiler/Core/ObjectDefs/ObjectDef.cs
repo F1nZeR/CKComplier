@@ -57,10 +57,7 @@ namespace CKCompiler.Core.ObjectDefs
                     Generator.Emit(OpCodes.Stloc_3);
                     break;
                 default:
-                    if (localVarNumber < 256)
-                        Generator.Emit(OpCodes.Stloc_S, localVarNumber);
-                    else
-                        Generator.Emit(OpCodes.Stloc, localVarNumber);
+                    Generator.Emit(localVarNumber < 256 ? OpCodes.Stloc_S : OpCodes.Stloc, localVarNumber);
                     break;
             }
         }
@@ -82,10 +79,7 @@ namespace CKCompiler.Core.ObjectDefs
                     Generator.Emit(OpCodes.Ldloc_3);
                     break;
                 default:
-                    if (localVarNumber < 256)
-                        Generator.Emit(OpCodes.Ldloc_S, localVarNumber);
-                    else
-                        Generator.Emit(OpCodes.Ldloc, localVarNumber);
+                    Generator.Emit(localVarNumber < 256 ? OpCodes.Ldloc_S : OpCodes.Ldloc, localVarNumber);
                     break;
             }
         }

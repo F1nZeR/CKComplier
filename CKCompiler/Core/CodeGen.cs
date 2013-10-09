@@ -5,13 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using CKCompiler.Core.Errors;
 using CKCompiler.Core.ObjectDefs;
-using CKCompiler.Tokens;
 
 namespace CKCompiler.Core
 {
@@ -22,7 +19,7 @@ namespace CKCompiler.Core
         private AssemblyName _assemblyName;
         private AssemblyBuilder _assemblyBuilder;
         private ModuleBuilder _moduleBuilder;
-        private OptimizationGen _optimizationGen;
+        private readonly OptimizationGen _optimizationGen;
 
         private TypeBuilder _currentTypeBuilder;
         private ILGenerator _currentIlGenerator;
@@ -36,6 +33,7 @@ namespace CKCompiler.Core
         private MethodBuilder _entryPoint, _currentFunction;
 
         public List<CompilerError> Errors { get; set; }
+        private bool _skipBlockAfterReturn;
 
         public static Type BoolType = typeof(bool),
             IntegerType = typeof(int),
@@ -130,6 +128,9 @@ namespace CKCompiler.Core
                 _fields.Add(className, fieldList);
                 _functions.Add(className, functionList);
             }
+
+            if (_entryPoint == null)
+                Errors.Add(new CompilerError("Отсутствует точка входа (класс Program с методом Main)"));
         }
 
         private void DefineField(IParseTree treeNode, TypeBuilder classBuilder, IDictionary<string, FieldObjectDef> fieldList)
@@ -309,21 +310,22 @@ namespace CKCompiler.Core
             LocalObjectDef.InitGenerator(_currentIlGenerator);
 
             var field = fieldNode.GetChild(1);
+            var fieldName = field.GetChild(0).GetChild(0).GetText();
             var returnObjectDef = field.ChildCount == 3
                 ? EmitExpression(field.GetChild(2))
                 : EmitDefaultValue(GetType(field.GetChild(0).GetChild(2).GetChild(0).GetText()));
 
-
+            if (_fields[_currentTypeBuilder.Name][fieldName].Type != returnObjectDef.Type)
+                Errors.Add(new OperationTypeError((IToken)field.GetChild(1).Payload, _fields[_currentTypeBuilder.Name][fieldName].Type,
+                    returnObjectDef.Type));
             returnObjectDef.Load();
-            _currentIlGenerator.Emit(OpCodes.Stsfld,
-                _fields[_currentTypeBuilder.Name][field.GetChild(0).GetChild(0).GetText()].FieldInfo);
+            _currentIlGenerator.Emit(OpCodes.Stsfld, _fields[_currentTypeBuilder.Name][fieldName].FieldInfo);
             returnObjectDef.Remove();
         }
 
         private void EmitFunction(IParseTree functionNode)
         {
             var functionName = functionNode.GetChild(0).GetText();
-            var functionReturnType = GetType(functionNode.GetChild(functionNode.ChildCount - 2).GetChild(0).GetText()); // todo: заюзать
 
             _currentArgs = _functions[_currentTypeBuilder.Name][functionName].Args;
             _currentIlGenerator = _functions[_currentTypeBuilder.Name][functionName].MethodBuilder.GetILGenerator();
@@ -349,7 +351,13 @@ namespace CKCompiler.Core
                     {
                         var objectDef = EmitExpression(blockStatementNode.GetChild(j));
                         if (objectDef != null) usedObjs.Add(objectDef);
+
+                        if (_skipBlockAfterReturn) break;
                     }
+
+                    if (!_skipBlockAfterReturn) continue;
+                    _skipBlockAfterReturn = false;
+                    break;
                 }
 
                 foreach (var objectDef in usedObjs)
@@ -428,7 +436,8 @@ namespace CKCompiler.Core
 
         private void EmitReturnAction(IParseTree returnNode)
         {
-            if (returnNode.ChildCount == 2)
+            _skipBlockAfterReturn = true;
+            if (returnNode.ChildCount != 3)
             {
                 if (_currentFunction.ReturnType != VoidType)
                 {
@@ -440,7 +449,7 @@ namespace CKCompiler.Core
             }
 
             var returnRes = EmitExpression(returnNode.GetChild(1));
-            if (returnRes == null)
+            if (returnRes == null || returnRes.Type != _currentFunction.ReturnType)
             {
                 Errors.Add(new ExpectedInputTypeError((IToken)returnNode.GetChild(0).Payload,
                         _currentFunction.ReturnType));
@@ -456,6 +465,23 @@ namespace CKCompiler.Core
         private void EmitIfCondition(IParseTree conditionNode, IParseTree actionNode, IParseTree elseNode)
         {
             var checkObjectDef = EmitExpression(conditionNode);
+
+            // оптимизация с константой
+            if (checkObjectDef.GetType() == typeof (ValueObjectDef) && checkObjectDef.Type == BoolType)
+            {
+                var checkValue = (bool) ((ValueObjectDef) checkObjectDef).GetValue();
+                if (checkValue)
+                {
+                    // генерим только тело
+                    EmitExpression(actionNode);
+                }
+                else if (elseNode != null)
+                {
+                    EmitExpression(elseNode);
+                }
+                return;
+            }
+
             checkObjectDef.Load();
             checkObjectDef.Remove();
 
@@ -486,6 +512,18 @@ namespace CKCompiler.Core
 
             var checkObjectDef = EmitExpression(whileNode.GetChild(1));
             checkObjectDef.Load();
+            checkObjectDef.Remove();
+
+            // Оптимизация с константой (true - бесконечный цикл, но надеемся, что разработчик сам там return воткнёт
+            // и просто сгенерим цикл. Иначе, если false, то цикл не генерим)
+            if (checkObjectDef.GetType() == typeof(ValueObjectDef) && checkObjectDef.Type == BoolType)
+            {
+                var checkValue = (bool)((ValueObjectDef)checkObjectDef).GetValue();
+                if (!checkValue)
+                {
+                    return;
+                }
+            }
 
             if (checkObjectDef.Type != BoolType)
                 Errors.Add(new ExpectedInputTypeError((IToken)whileNode.GetChild(0).Payload, BoolType));
@@ -497,8 +535,6 @@ namespace CKCompiler.Core
             _currentIlGenerator.Emit(OpCodes.Br, checkLabel);
 
             _currentIlGenerator.MarkLabel(exitLabel);
-
-            checkObjectDef.Remove();
             if (bodyObjectDef != null) bodyObjectDef.Remove();
         }
 
@@ -633,36 +669,33 @@ namespace CKCompiler.Core
                     returnObject1.GetType() == typeof(ValueObjectDef))
                 {
                     var newValue = _optimizationGen.GetComparasionConstValue(returnObject1, returnObject2, compOperator);
-                    newValue.Load();
-                    newValue.Remove();
+                    return newValue;
                 }
-                else
+
+                returnObject1.Load();
+                returnObject2.Load();
+
+                switch (compOperator.Type)
                 {
-                    returnObject1.Load();
-                    returnObject2.Load();
+                    case CKParser.LT:
+                        _currentIlGenerator.Emit(OpCodes.Clt);
+                        break;
 
-                    switch (compOperator.Type)
-                    {
-                        case CKParser.LT:
-                            _currentIlGenerator.Emit(OpCodes.Clt);
-                            break;
+                    case CKParser.LE:
+                        _currentIlGenerator.Emit(OpCodes.Cgt);
+                        _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
+                        _currentIlGenerator.Emit(OpCodes.Ceq);
+                        break;
 
-                        case CKParser.LE:
-                            _currentIlGenerator.Emit(OpCodes.Cgt);
-                            _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
-                            _currentIlGenerator.Emit(OpCodes.Ceq);
-                            break;
+                    case CKParser.GT:
+                        _currentIlGenerator.Emit(OpCodes.Cgt);
+                        break;
 
-                        case CKParser.GT:
-                            _currentIlGenerator.Emit(OpCodes.Cgt);
-                            break;
-
-                        case CKParser.GE:
-                            _currentIlGenerator.Emit(OpCodes.Clt);
-                            _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
-                            _currentIlGenerator.Emit(OpCodes.Ceq);
-                            break;
-                    }
+                    case CKParser.GE:
+                        _currentIlGenerator.Emit(OpCodes.Clt);
+                        _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
+                        _currentIlGenerator.Emit(OpCodes.Ceq);
+                        break;
                 }
 
                 returnObject1.Remove();
@@ -689,26 +722,23 @@ namespace CKCompiler.Core
                     returnObject1.GetType() == typeof(ValueObjectDef))
                 {
                     var newValue = _optimizationGen.GetEqualityConstValue(returnObject1, returnObject2);
-                    newValue.Load();
-                    newValue.Remove();
+                    return newValue;
                 }
-                else
-                {
-                    returnObject1.Load();
-                    returnObject2.Load();
+                
+                returnObject1.Load();
+                returnObject2.Load();
 
-                    if (returnObject1.Type != StringType)
-                    {
-                        _currentIlGenerator.Emit(OpCodes.Ceq);
-                    }
-                    else // случай со строками
-                    {
-                        var method = typeof(String).GetMethod("op_Equality", BindingFlags.Public | BindingFlags.Static,
-                            null, new[] { StringType, StringType }, null);
-                        _currentIlGenerator.EmitCall(OpCodes.Call, method, null);
-                        _currentIlGenerator.Emit(OpCodes.Ldc_I4_1);
-                        _currentIlGenerator.Emit(OpCodes.Ceq);
-                    }
+                if (returnObject1.Type != StringType)
+                {
+                    _currentIlGenerator.Emit(OpCodes.Ceq);
+                }
+                else // случай со строками
+                {
+                    var method = typeof(String).GetMethod("op_Equality", BindingFlags.Public | BindingFlags.Static,
+                        null, new[] { StringType, StringType }, null);
+                    _currentIlGenerator.EmitCall(OpCodes.Call, method, null);
+                    _currentIlGenerator.Emit(OpCodes.Ldc_I4_1);
+                    _currentIlGenerator.Emit(OpCodes.Ceq);
                 }
 
                 returnObject1.Remove();
@@ -724,13 +754,19 @@ namespace CKCompiler.Core
             var id = EmitExpression(assignNode.GetChild(0));
 
             returnObjectDef.Load();
+            if (id.Type != returnObjectDef.Type)
+                Errors.Add(new OperationTypeError((IToken)assignNode.GetChild(1).Payload, id.Type,
+                    returnObjectDef.Type));
+
             if (id is LocalObjectDef || id is ArgObjectDef)
             {
                 LocalObjectDef.AllocateLocal(id.Type, assignNode.GetChild(0).GetText());
             }
-            else if (id is FieldObjectDef)
+            else
             {
-                var idName = (FieldObjectDef)id;
+                var def = id as FieldObjectDef;
+                if (def == null) return null;
+                var idName = def;
                 _currentIlGenerator.Emit(OpCodes.Stsfld, idName.FieldInfo);
             }
 
@@ -803,36 +839,33 @@ namespace CKCompiler.Core
                 {
                     var retValue = _optimizationGen.GetArithmeticConstValue(returnObject1, returnObject2,
                         exprOperandToken);
-                    retValue.Load();
-                    retValue.Remove();
+                    return retValue;
                 }
-                else
-                {
-                    returnObject1.Load();
-                    returnObject2.Load();
 
-                    switch (exprOperandToken.Type)
-                    {
-                        case CKParser.PLUS:
-                            if (returnObject1.Type == returnObject2.Type && returnObject1.Type == StringType)
-                            {
-                                var method = typeof (String).GetMethod("Concat",
-                                    BindingFlags.Public | BindingFlags.Static,
-                                    null, new[] {StringType, StringType}, null);
-                                _currentIlGenerator.EmitCall(OpCodes.Call, method, null);
-                            }
-                            else _currentIlGenerator.Emit(OpCodes.Add);
-                            break;
-                        case CKParser.MINUS:
-                            _currentIlGenerator.Emit(OpCodes.Sub);
-                            break;
-                        case CKParser.MULT:
-                            _currentIlGenerator.Emit(OpCodes.Mul);
-                            break;
-                        case CKParser.DIV:
-                            _currentIlGenerator.Emit(OpCodes.Div);
-                            break;
-                    }
+                returnObject1.Load();
+                returnObject2.Load();
+
+                switch (exprOperandToken.Type)
+                {
+                    case CKParser.PLUS:
+                        if (returnObject1.Type == returnObject2.Type && returnObject1.Type == StringType)
+                        {
+                            var method = typeof (String).GetMethod("Concat",
+                                BindingFlags.Public | BindingFlags.Static,
+                                null, new[] {StringType, StringType}, null);
+                            _currentIlGenerator.EmitCall(OpCodes.Call, method, null);
+                        }
+                        else _currentIlGenerator.Emit(OpCodes.Add);
+                        break;
+                    case CKParser.MINUS:
+                        _currentIlGenerator.Emit(OpCodes.Sub);
+                        break;
+                    case CKParser.MULT:
+                        _currentIlGenerator.Emit(OpCodes.Mul);
+                        break;
+                    case CKParser.DIV:
+                        _currentIlGenerator.Emit(OpCodes.Div);
+                        break;
                 }
 
                 returnObject1.Remove();
@@ -945,11 +978,14 @@ namespace CKCompiler.Core
             var localOrFieldInitNode = varDefBody.GetChild(0);
             var type = GetType(localOrFieldInitNode.GetChild(2).GetChild(0).GetText());
 
-            ObjectDef localReturnObjectDef;
-            if (varDefBody.ChildCount == 3)
-                localReturnObjectDef = EmitExpression(varDefBody.GetChild(2));
-            else
-                localReturnObjectDef = EmitDefaultValue(type);
+            var localReturnObjectDef = varDefBody.ChildCount == 3
+                ? EmitExpression(varDefBody.GetChild(2))
+                : EmitDefaultValue(type);
+
+            if (type != localReturnObjectDef.Type)
+                Errors.Add(new OperationTypeError((IToken)varDefBody.GetChild(1).Payload, type,
+                    localReturnObjectDef.Type));
+
             localReturnObjectDef.Load();
             localReturnObjectDef.Remove();
 
