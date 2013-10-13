@@ -18,6 +18,8 @@ public interface ICKVisitor<Result> : IParseTreeVisitor<Result> {
 
 	Result VisitVarDef(CKParser.VarDefContext context);
 
+	Result VisitCreator(CKParser.CreatorContext context);
+
 	Result VisitVarDefType(CKParser.VarDefTypeContext context);
 
 	Result VisitStatementExpr(CKParser.StatementExprContext context);

@@ -467,9 +467,9 @@ namespace CKCompiler.Core
             var checkObjectDef = EmitExpression(conditionNode);
 
             // оптимизация с константой
-            if (checkObjectDef.GetType() == typeof (ValueObjectDef) && checkObjectDef.Type == BoolType)
+            if (checkObjectDef.GetType() == typeof(ValueObjectDef) && checkObjectDef.Type == BoolType)
             {
-                var checkValue = (bool) ((ValueObjectDef) checkObjectDef).GetValue();
+                var checkValue = (bool)((ValueObjectDef)checkObjectDef).GetValue();
                 if (checkValue)
                 {
                     // генерим только тело
@@ -630,7 +630,8 @@ namespace CKCompiler.Core
                             return EmitComparsionOperation(expressionNode);
 
                         case CKParser.EQUAL:
-                            return EmitEqualOperation(expressionNode);
+                        case CKParser.NOTEQUAL:
+                            return EmitEqualOperation(expressionNode, operand);
 
                         case CKParser.ASSIGN:
                             return EmitAssignOperation(expressionNode);
@@ -645,10 +646,27 @@ namespace CKCompiler.Core
                             throw new MissingMethodException();
                     }
                 case 4: // func call with args
-                    return EmitInvoke(expressionNode.GetChild(0), expressionNode.GetChild(2));
+                    operand = (IToken)expressionNode.GetChild(1).Payload;
+                    switch (operand.Type)
+                    {
+                        case CKParser.LBRACK:
+                            return EmitArrayElement(expressionNode);
+
+                        case CKParser.LPAREN:
+                            return EmitInvoke(expressionNode.GetChild(0), expressionNode.GetChild(2));
+                    }
+                    break;
             }
 
             throw new MissingMethodException();
+        }
+
+        private ObjectDef EmitArrayElement(IParseTree expressionNode)
+        {
+            var arrayObj = EmitExpression(expressionNode.GetChild(0));
+            var index = EmitExpression(expressionNode.GetChild(2));
+
+            return new ArrayElemObjDef((LocalObjectDef)arrayObj, index);
         }
 
         private ObjectDef EmitComparsionOperation(IParseTree compNode)
@@ -705,7 +723,13 @@ namespace CKCompiler.Core
             return LocalObjectDef.AllocateLocal(BoolType);
         }
 
-        private ObjectDef EmitEqualOperation(IParseTree equalNode)
+        /// <summary>
+        /// Эмит операции равенства/неравенства
+        /// </summary>
+        /// <param name="equalNode"></param>
+        /// <param name="operand">операция</param>
+        /// <returns></returns>
+        private ObjectDef EmitEqualOperation(IParseTree equalNode, IToken operand)
         {
             var returnObject1 = EmitExpression(equalNode.GetChild(0));
             var returnObject2 = EmitExpression(equalNode.GetChild(2));
@@ -713,7 +737,7 @@ namespace CKCompiler.Core
             if ((returnObject1.Type != IntegerType && returnObject1.Type != FloatType ||
                 returnObject2.Type != IntegerType && returnObject2.Type != FloatType) &&
                 returnObject1.Type != returnObject2.Type)
-                Errors.Add(new OperationTypeError((IToken)equalNode.GetChild(1).Payload, returnObject1.Type,
+                Errors.Add(new OperationTypeError(operand, returnObject1.Type,
                     returnObject2.Type));
             else
             {
@@ -724,7 +748,7 @@ namespace CKCompiler.Core
                     var newValue = _optimizationGen.GetEqualityConstValue(returnObject1, returnObject2);
                     return newValue;
                 }
-                
+
                 returnObject1.Load();
                 returnObject2.Load();
 
@@ -741,6 +765,13 @@ namespace CKCompiler.Core
                     _currentIlGenerator.Emit(OpCodes.Ceq);
                 }
 
+                // случай NotEqual
+                if (operand.Type == CKParser.NOTEQUAL)
+                {
+                    _currentIlGenerator.Emit(OpCodes.Ldc_I4_0);
+                    _currentIlGenerator.Emit(OpCodes.Ceq);
+                }
+
                 returnObject1.Remove();
                 returnObject2.Remove();
             }
@@ -753,23 +784,27 @@ namespace CKCompiler.Core
             var returnObjectDef = EmitExpression(assignNode.GetChild(2));
             var id = EmitExpression(assignNode.GetChild(0));
 
-            returnObjectDef.Load();
             if (id.Type != returnObjectDef.Type)
                 Errors.Add(new OperationTypeError((IToken)assignNode.GetChild(1).Payload, id.Type,
                     returnObjectDef.Type));
 
-            if (id is LocalObjectDef || id is ArgObjectDef)
+            if (id is ArrayElemObjDef)
             {
-                LocalObjectDef.AllocateLocal(id.Type, assignNode.GetChild(0).GetText());
-            }
-            else
-            {
-                var def = id as FieldObjectDef;
-                if (def == null) return null;
-                var idName = def;
-                _currentIlGenerator.Emit(OpCodes.Stsfld, idName.FieldInfo);
+                var curId = (ArrayElemObjDef) id;
+                curId.SetArrayElem(returnObjectDef);
+                return null;
             }
 
+            returnObjectDef.Load();
+            if (id is FieldObjectDef)
+            {
+                var idName = (FieldObjectDef)id;
+                _currentIlGenerator.Emit(OpCodes.Stsfld, idName.FieldInfo);
+                return null;
+            }
+
+            // здесь обработается случай с field'ами и localObjDef'ами
+            LocalObjectDef.AllocateLocal(id.Type, assignNode.GetChild(0).GetText());
             return null;
         }
 
@@ -799,6 +834,20 @@ namespace CKCompiler.Core
         {
             ObjectDef result;
 
+            // если инициализация массива
+            if (classNewNode.ChildCount == 4)
+            {
+                // возвращаем количество
+                var count = EmitExpression(classNewNode.GetChild(2));
+                if (count.Type != IntegerType)
+                {
+                    Errors.Add(new CompilerError("Размер массива должен быть целочисленным",
+                        classNewNode.GetChild(1).Payload));
+                    return new ValueObjectDef(IntegerType, 0);
+                }
+                return count;
+            }
+
             var objectName = classNewNode.GetText();
             if (!_classBuilders.ContainsKey(objectName))
             {
@@ -826,7 +875,7 @@ namespace CKCompiler.Core
             var exprOperandToken = (IToken)expressionNode.GetChild(1).Payload;
 
             if (returnObject1.Type != returnObject2.Type &&
-                ((returnObject1.Type != FloatType && returnObject2.Type != IntegerType) || 
+                ((returnObject1.Type != FloatType && returnObject2.Type != IntegerType) ||
                 (returnObject1.Type != IntegerType && returnObject2.Type != FloatType) ||
                 returnObject1.Type == StringType && returnObject2.Type == StringType && exprOperandToken.Type != CKParser.PLUS))
                 Errors.Add(new OperationTypeError((IToken)expressionNode.GetChild(1).Payload, returnObject1.Type,
@@ -835,7 +884,7 @@ namespace CKCompiler.Core
             {
                 // оптимизация: если и левый кусок и правый - константы
                 if (returnObject1.GetType() == returnObject2.GetType() &&
-                    returnObject1.GetType() == typeof (ValueObjectDef))
+                    returnObject1.GetType() == typeof(ValueObjectDef))
                 {
                     var retValue = _optimizationGen.GetArithmeticConstValue(returnObject1, returnObject2,
                         exprOperandToken);
@@ -850,9 +899,9 @@ namespace CKCompiler.Core
                     case CKParser.PLUS:
                         if (returnObject1.Type == returnObject2.Type && returnObject1.Type == StringType)
                         {
-                            var method = typeof (String).GetMethod("Concat",
+                            var method = typeof(String).GetMethod("Concat",
                                 BindingFlags.Public | BindingFlags.Static,
-                                null, new[] {StringType, StringType}, null);
+                                null, new[] { StringType, StringType }, null);
                             _currentIlGenerator.EmitCall(OpCodes.Call, method, null);
                         }
                         else _currentIlGenerator.Emit(OpCodes.Add);
@@ -978,18 +1027,30 @@ namespace CKCompiler.Core
             var localOrFieldInitNode = varDefBody.GetChild(0);
             var type = GetType(localOrFieldInitNode.GetChild(2).GetChild(0).GetText());
 
-            var localReturnObjectDef = varDefBody.ChildCount == 3
+            var isArray = false;
+            if (localOrFieldInitNode.ChildCount == 5)
+            {
+                // массивы
+                isArray = true;
+                var size = EmitExpression(varDefBody.GetChild(2));
+                size.Load();
+                size.Remove();
+            }
+            else
+            {
+                var localReturnObjectDef = varDefBody.ChildCount == 3
                 ? EmitExpression(varDefBody.GetChild(2))
                 : EmitDefaultValue(type);
 
-            if (type != localReturnObjectDef.Type)
-                Errors.Add(new OperationTypeError((IToken)varDefBody.GetChild(1).Payload, type,
-                    localReturnObjectDef.Type));
+                if (type != localReturnObjectDef.Type)
+                    Errors.Add(new OperationTypeError((IToken)varDefBody.GetChild(1).Payload, type,
+                        localReturnObjectDef.Type));
 
-            localReturnObjectDef.Load();
-            localReturnObjectDef.Remove();
+                localReturnObjectDef.Load();
+                localReturnObjectDef.Remove();
+            }
 
-            var localObjectDef = LocalObjectDef.AllocateLocal(type, localOrFieldInitNode.GetChild(0).GetText());
+            var localObjectDef = LocalObjectDef.AllocateLocal(type, localOrFieldInitNode.GetChild(0).GetText(), isArray);
             localObjectDefs.Add(localObjectDef);
 
             // todo: var переменные через запятую

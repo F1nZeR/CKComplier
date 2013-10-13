@@ -65,6 +65,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Analyzers\CKBaseListener.cs" />
+    <Compile Include="Analyzers\CKBaseVisitor.cs" />
     <Compile Include="Analyzers\CKLexer.cs" />
     <Compile Include="Analyzers\CKListener.cs" />
     <Compile Include="Analyzers\CKParser.cs" />
@@ -80,6 +82,7 @@
     <Compile Include="Core\Errors\ExpectedInputTypeError.cs" />
     <Compile Include="Core\MsCoreClasses.cs" />
     <Compile Include="Core\ObjectDefs\ArgObjectDef.cs" />
+    <Compile Include="Core\ObjectDefs\ArrayElemObjDef.cs" />
     <Compile Include="Core\ObjectDefs\enmObjectScope.cs" />
     <Compile Include="Core\ObjectDefs\FieldObjectDef.cs" />
     <Compile Include="Core\ObjectDefs\LocalObjectDef.cs" />

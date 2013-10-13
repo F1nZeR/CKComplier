@@ -11,6 +11,7 @@ namespace CKCompiler.Core.ObjectDefs
         Value,
         Local,
         Argument,
-        Field
+        Field,
+        ArrayElem
     }
 }

@@ -1,0 +1,20 @@
+class Program
+{
+	Main():void
+	{
+		var a:int[] = new int[10];
+		var i:int = 0;
+		while (i < 10)
+		{
+			a[i] = i;
+			i = i + 1;
+		}
+		var io:IO = new IO;
+		i = 0;
+		while (i < 10)
+		{
+			io.WriteLineInt(a[i]);
+			i = i + 1;
+		}
+	}
+}

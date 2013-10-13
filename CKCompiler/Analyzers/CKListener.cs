@@ -25,6 +25,9 @@ public interface ICKListener : IParseTreeListener {
 	void EnterVarDef(CKParser.VarDefContext context);
 	void ExitVarDef(CKParser.VarDefContext context);
 
+	void EnterCreator(CKParser.CreatorContext context);
+	void ExitCreator(CKParser.CreatorContext context);
+
 	void EnterVarDefType(CKParser.VarDefTypeContext context);
 	void ExitVarDefType(CKParser.VarDefTypeContext context);
 

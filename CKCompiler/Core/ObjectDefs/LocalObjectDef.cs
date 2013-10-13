@@ -13,12 +13,14 @@ namespace CKCompiler.Core.ObjectDefs
 
         public int Number;
         public string Name;
+        public bool IsArray;
 
-        protected LocalObjectDef(Type type, int number, string name = "")
+        protected LocalObjectDef(Type type, int number, string name = "", bool isArray = false)
             : base(type)
         {
             Name = name;
             Number = number;
+            IsArray = isArray;
         }
 
         public override enmObjectScope Scope
@@ -31,7 +33,7 @@ namespace CKCompiler.Core.ObjectDefs
 
         protected List<LocalObjectDef> DuplicatedLocals = new List<LocalObjectDef>();
 
-        public static LocalObjectDef AllocateLocal(Type type, string name = "")
+        public static LocalObjectDef AllocateLocal(Type type, string name = "", bool isArray = false)
         {
             var duplicatedLocals = new List<LocalObjectDef>();
             int number = 0;
@@ -47,14 +49,18 @@ namespace CKCompiler.Core.ObjectDefs
                 if (Locals[i].Type.Name == type.Name && !Locals[i].IsUsed)
                 {
                     number = i;
-                    Locals[i] = new LocalObjectDef(type, number, name);
+                    Locals[i] = new LocalObjectDef(type, number, name, isArray);
                     break;
                 }
             if (i == Locals.Count)
             {
+                if (isArray)
+                {
+                    Generator.Emit(OpCodes.Newarr, type);
+                }
                 var localVar = Generator.DeclareLocal(type);
                 number = localVar.LocalIndex;
-                Locals.Add(new LocalObjectDef(type, number, name));
+                Locals.Add(new LocalObjectDef(type, number, name, isArray));
             }
             EmitSaveToLocal(number);
             return Locals[number];

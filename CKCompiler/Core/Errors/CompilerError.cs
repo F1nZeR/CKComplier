@@ -22,14 +22,9 @@ namespace CKCompiler.Core.Errors
             Column = OffendingToken.Column;
         }
 
-        public CompilerError(string message, int? fromPos = null, int? toPos = null)
+        public CompilerError(string message)
         {
             Message = message;
-            
-            if (fromPos.HasValue && toPos.HasValue)
-            {
-                OffendingToken = new CommonToken(null, 0, 0, fromPos.Value, toPos.Value);
-            }
         }
 
         public CompilerError(string message, object token)

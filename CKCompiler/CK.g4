@@ -17,7 +17,7 @@ classBodyItem : funcDef | varDef;
 
 varDef : VAR varDefBody (COMMA varDefBody)* SEMI;
 
-varDefType : ID COLON (type | ID);
+varDefType : ID COLON (type | ID) (LBRACK RBRACK)?;
 
 varDefBody : varDefType (ASSIGN expr)?;
 
@@ -44,8 +44,9 @@ blockStatement : action
 
 expr : primary
      | expr DOT ID
+     | NEW creator
+	 | expr LBRACK expr RBRACK
      | expr LPAREN exprList? RPAREN
-     | NEW ID
      | expr (MULT | DIV) expr
      | expr (PLUS | MINUS) expr
      | expr (LT | GT | LE | GE) expr
@@ -57,6 +58,8 @@ primary : LPAREN expr RPAREN
         | literal
         | ID
         ;
+
+creator : type (LBRACK expr RBRACK)?;
 
 exprList : expr (COMMA expr)*;
 
@@ -104,6 +107,8 @@ type
 	NOTEQUAL : '!=';
 	ASSIGN : '=' ;
 	SEMI : ';';
+	LBRACK : '[';
+	RBRACK : ']';
 	LPAREN : '(';
 	RPAREN : ')';
 	LCURLY : '{';
