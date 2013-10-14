@@ -108,7 +108,7 @@ namespace CKCompiler.Core
 				}, outIneLineBuilder));
 
             var inStringBuilder = classBuilder.DefineMethod("ReadString", MethodAttributes.Public, CallingConventions.Standard,
-                classBuilder, Type.EmptyTypes);
+                CodeGen.StringType, Type.EmptyTypes);
             ilGenerator = inStringBuilder.GetILGenerator();
             ilGenerator.Emit(OpCodes.Call, ReadMethod);
             ilGenerator.Emit(OpCodes.Ret);
@@ -119,7 +119,7 @@ namespace CKCompiler.Core
 				}, inStringBuilder));
 
             var inIntBuilder = classBuilder.DefineMethod("ReadInt", MethodAttributes.Public, CallingConventions.Standard,
-                classBuilder, Type.EmptyTypes);
+                CodeGen.IntegerType, Type.EmptyTypes);
             ilGenerator = inIntBuilder.GetILGenerator();
             ilGenerator.Emit(OpCodes.Call, ReadMethod);
             ilGenerator.Emit(OpCodes.Call, IntParseMethod);

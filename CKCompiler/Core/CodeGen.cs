@@ -436,7 +436,8 @@ namespace CKCompiler.Core
 
         private void EmitReturnAction(IParseTree returnNode)
         {
-            _skipBlockAfterReturn = true;
+            // для случая, когда в блоке только return и без фигурных скобок
+            _skipBlockAfterReturn = returnNode.Parent.GetType() != typeof(CKParser.ActionContext);
             if (returnNode.ChildCount != 3)
             {
                 if (_currentFunction.ReturnType != VoidType)
@@ -1042,7 +1043,7 @@ namespace CKCompiler.Core
                 ? EmitExpression(varDefBody.GetChild(2))
                 : EmitDefaultValue(type);
 
-                if (type != localReturnObjectDef.Type)
+                if (type.Name != localReturnObjectDef.Type.Name)
                     Errors.Add(new OperationTypeError((IToken)varDefBody.GetChild(1).Payload, type,
                         localReturnObjectDef.Type));
 

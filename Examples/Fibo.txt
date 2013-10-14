@@ -4,9 +4,9 @@ class Program
 	{
 		var io:IO = new IO;
 		var fibo:Fibo = new Fibo;
-		io.WriteString("Введите число: ");
+		io.WriteString("Р’РІРµРґРёС‚Рµ С‡РёСЃР»Рѕ: ");
 		var num:int = io.ReadInt();
-		io.WriteString("Фибоначчи: ");
+		io.WriteString("Р¤РёР±Рѕ: ");
 		io.WriteInt(fibo.GetFibo(num));
 	}
 }
