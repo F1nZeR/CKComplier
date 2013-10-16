@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Reflection.Emit;
 
 namespace CKCompiler.Core.ObjectDefs
 {
@@ -27,7 +22,24 @@ namespace CKCompiler.Core.ObjectDefs
         {
             Array.Load();
             Index.Load();
-            Generator.Emit(OpCodes.Ldelem_I4); // токо для int32
+
+            if (Array.Type == CodeGen.IntegerType)
+            {
+                Generator.Emit(OpCodes.Ldelem_I4);
+            }
+            else if (Array.Type == CodeGen.FloatType)
+            {
+                Generator.Emit(OpCodes.Ldelem_R4);
+            }
+            else if (Array.Type == CodeGen.CharType || Array.Type == CodeGen.BoolType)
+            {
+                Generator.Emit(OpCodes.Ldelem_I1);
+            }
+            else
+            {
+                // ссылочные типы
+                Generator.Emit(OpCodes.Ldelem_Ref);
+            }
         }
 
         public override void Remove()
@@ -43,7 +55,24 @@ namespace CKCompiler.Core.ObjectDefs
             Array.Load();
             Index.Load();
             value.Load();
-            Generator.Emit(OpCodes.Stelem_I4); // токо для int32
+
+            if (Array.Type == CodeGen.IntegerType)
+            {
+                Generator.Emit(OpCodes.Stelem_I4);
+            }
+            else if (Array.Type == CodeGen.FloatType)
+            {
+                Generator.Emit(OpCodes.Stelem_R4);
+            }
+            else if (Array.Type == CodeGen.CharType || Array.Type == CodeGen.BoolType)
+            {
+                Generator.Emit(OpCodes.Stelem_I1);
+            }
+            else
+            {
+                // ссылочные типы
+                Generator.Emit(OpCodes.Stelem_Ref);
+            }
         }
     }
 }
