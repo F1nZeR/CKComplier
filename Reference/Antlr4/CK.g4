@@ -1,149 +1,100 @@
 grammar CK;
 
 options {
-  language = CSharp3;
-  output=AST;
-  TokenLabelType=CommonToken;
-  ASTLabelType=CommonTree;
-}
-
-tokens {
-	ClassesList;
-	Class;
-	FeatureList;
-	FuncDef;	
-	FunctionArgsList;
-	Term;
-	ImplicitInvoke;
-	Expr;
-	InvokeExprs; // func params
-	Exprs;
-	LocalOrFieldInit;
-	VarExprs;
+  language = CSharp_v4_5;
 }
 
 @lexer::namespace {CKCompiler.Analyzers} 
 @parser::namespace {CKCompiler.Analyzers} 
 
-@lexer::header {#pragma warning disable 3021
-
-using System;
-using System.Text;
-}
-
-@parser::header {#pragma warning disable 3021
-
-using System.Text;}
-
-@rulecatch {
-    catch (RecognitionException ex) {
-    	DebugRecognitionException(ex);
-    }
-}
-
-public program:
-	(classDef)+ -> ^(ClassesList classDef+);
+program :   classDef+;
 	
-classDef: 
-	CLASS typeName (COLON typeName)? LCURLY featureList RCURLY ->
-		^(Class typeName featureList typeName?);
+classDef :  CLASS ID (COLON ID)? classBody;
+
+classBody : LCURLY classBodyItem* RCURLY;
 		
-featureList:
-	(feature)* -> ^(FeatureList feature*);
-	
-feature: 
- 	(ID LPAREN (formalList)? RPAREN COLON typeName LCURLY expr RCURLY) -> 
- 		^(FuncDef ID typeName expr formalList?)
-  	| localOrFieldInit ;
+classBodyItem : funcDef | varDef;
 
-formalList:
-	formal (COMMA formal)* -> ^(FunctionArgsList formal+);
+varDef : VAR varDefBody (COMMA varDefBody)* SEMI;
 
-formal: ID COLON^ typeName;
+varDefType : ID COLON (type | ID) (LBRACK RBRACK)?;
 
-expr:
-	(ID ASSIGN^)* not;
-	
-not: 
-	(NOT^)* relation;
-	
-relation:
-	addition ((LE^ | LT^ | GE^ | GT^ | EQUAL^) addition)*;
-	
-addition:
-	multiplication ((PLUS^ | MINUS^) multiplication)*;
+varDefBody : varDefType (ASSIGN expr)?;
 
-multiplication:
-	isvoid ((MULT^ | DIV^) isvoid)*;
+funcDef : ID LPAREN funcArgs? RPAREN COLON (type | ID) funcBody;
 
-isvoid:
-	(ISVOID^)* neg;
+funcArgs : varDefType (COMMA varDefType)*;
 
-neg:
-	(NEG^)* dot;
-	
-dot:
-	term (DOT ID LPAREN invokeExprs? RPAREN)? ->
-		^(Term term ID? invokeExprs?);
+funcBody : block;
 
-term:
-	  ID LPAREN invokeExprs? RPAREN -> ^(ImplicitInvoke ID invokeExprs?)
-	| IF^ expr THEN! expr ELSE! expr ENDIF!
-	| WHILE^ expr LOOP! expr ENDLOOP!
-	| LCURLY (expr SEMI)+ RCURLY -> ^(Exprs expr+)
-	| VAR! varExprs
-	| NEW^ typeName
-	| RETURN^ expr
-	| LPAREN expr RPAREN -> ^(Expr expr)
-	| ID^
-	| INTEGER^
-	| FLOAT^
-	| STRING^
-	| CHAR^
-	| TRUE^
-	| FALSE^
-	| VOID^;
+action : block
+       | WHILE expr action
+       | IF expr action (ELSE action)?
+       | RETURN expr? SEMI
+       | statementExpr SEMI
+       ;
 
-invokeExprs:
-	expr (COMMA expr)* -> ^(InvokeExprs expr+);
-	
-varExprs:	
-	localOrFieldInit (COMMA localOrFieldInit)* -> ^(VarExprs localOrFieldInit+);
+statementExpr : expr;
 
-localOrFieldInit:	
-	ID COLON typeName (ASSIGN expr)? -> ^(LocalOrFieldInit ID typeName expr?);
-	
-typeName
-	: IntTypeName
-	| FloatTypeName
-	| BoolTypeName
-	| StringTypeName
-	| CharTypeName
-	| ObjectTypeName
-	| ID;
+block : LCURLY blockStatement* RCURLY;
+
+blockStatement : action
+               | varDef
+               ;
+
+expr : primary
+     | expr DOT ID
+     | NEW creator
+	 | expr LBRACK expr RBRACK
+     | expr LPAREN exprList? RPAREN
+     | expr (MULT | DIV) expr
+     | expr (PLUS | MINUS) expr
+     | expr (LT | GT | LE | GE) expr
+	 | expr (EQUAL | NOTEQUAL) expr
+     | expr (ASSIGN <assoc=right>) expr
+     ;
+
+primary : LPAREN expr RPAREN
+        | literal
+        | ID
+        ;
+
+creator : type (LBRACK expr RBRACK)?;
+
+exprList : expr (COMMA expr)*;
+
+literal : INTEGER
+        | FLOAT
+        | STRING
+        | CHAR
+        | TRUE
+        | FALSE
+        ;
+
+type
+    : IntTypeName
+    | FloatTypeName
+    | BoolTypeName
+    | StringTypeName
+    | CharTypeName
+	| VoidTypeName
+    | ID
+    ;
 
 // keywords
 	CLASS : 'class';
 	ELSE : 'else';
 	FALSE : 'false';
-	ENDIF : 'endif';
 	IF : 'if';
 	RETURN : 'return';
-	ISVOID : 'isvoid';
 	VAR : 'var';
-	LOOP : 'loop';
-	ENDLOOP : 'endloop';
-	THEN : 'then';
 	WHILE : 'while';
 	NEW : 'new';
-	NOT : 'not';
 	TRUE : 'true';
-	VOID : 'void';
 	
 
 // operators
 	DOT : '.';
-	NEG : '~';
 	MULT : '*';
 	DIV : '/';
 	PLUS : '+';
@@ -153,8 +104,11 @@ typeName
 	GE : '>=';
 	GT : '>';
 	EQUAL : '==';
+	NOTEQUAL : '!=';
 	ASSIGN : '=' ;
-	SEMI : ';';	// razdelitel
+	SEMI : ';';
+	LBRACK : '[';
+	RBRACK : ']';
 	LPAREN : '(';
 	RPAREN : ')';
 	LCURLY : '{';
@@ -167,28 +121,27 @@ typeName
 	BoolTypeName :  'bool';
 	CharTypeName : 'char';
 	StringTypeName : 'string';
-	ObjectTypeName : 'object';
+	VoidTypeName : 'void';
 
-MULTILINE_COMMENT 
-	:	 '/*' .* '*/' {$channel = Hidden;} ;
+STRING : '"' StringCharacters? '"';
 
-STRING	:	'"'
-		{ StringBuilder b = new StringBuilder(); }
-		(	'"' '"'				{ b.Append('"');}
-		|	c=~('"'|'\r'|'\n')	{ b.Append((char)c);}
-		)*
-		'"'
-		{ Text = b.ToString(); }
-	;
+fragment
+StringCharacters
+    :   StringCharacter+
+    ;
+
+fragment
+StringCharacter
+    :   ~["\\]
+    ;
 
 fragment LETTER : ('a'..'z' | 'A'..'Z') ;
 fragment DIGIT : '0'..'9';
 INTEGER : DIGIT+ ;
-CHAR : '\'' LETTER '\'';
+CHAR : '\'' . '\'';
 FLOAT : DIGIT+ '.' DIGIT+;
 ID : LETTER (LETTER | DIGIT | '_')*;
-WS : (' ' | '\t' | '\n' | '\r' | '\f')+ {$channel = Hidden;};
-COMMENT : '//' .* ('\n'|'\r') {$channel = Hidden;};
-FALL_THROUGH
-  :  .  {DebugRecognitionException(new NoViableAltException("Unknown lexem: " + Text, 5, 1, input, 1));}
-  ;
+WS  :  [ \t\r\n\u000C]+ -> skip;
+COMMENT : '//' ~[\r\n]* -> skip;
+MULTILINE_COMMENT : '/*' .*? '*/' -> skip;
+FALL_THROUGH : .+?;

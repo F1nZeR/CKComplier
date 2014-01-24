@@ -21,7 +21,7 @@ namespace CKCompiler
     /// </summary>
     public partial class MainWindow : MetroWindow
     {
-        private Compiler _compiler = new Compiler();
+        private readonly Compiler _compiler = new Compiler();
         private DispatcherTimer _compileTimer;
 
         public MainWindow()
@@ -126,8 +126,15 @@ namespace CKCompiler
 
         private void CompileExecuted(object sender, ExecutedRoutedEventArgs e)
         {
-            _compiler = new Compiler();
-            Compile();
+            _compiler.GenerateCode(true);
+            if (_compiler.HasErrors)
+            {
+                DisplayErrors();
+            }
+            else
+            {
+                System.Diagnostics.Process.Start("exec.exe");
+            }
         }
 
         private void GenerateExecuted(object sender, ExecutedRoutedEventArgs e)
